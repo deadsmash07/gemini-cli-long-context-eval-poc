@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/deadsmash07/gemini-cli-long-context-eval-poc/schema/task-manifest.schema.json",
+  "title": "CodingTaskManifest",
+  "description": "Schema for a long-context coding evaluation task manifest. Each task represents a real-world code change mined from an open-source PR, designed to evaluate an AI coding agent's ability to read, understand, and modify code across multiple files. Inspired by Gemini CLI's EvalCase interface.",
+  "type": "object",
+  "required": [
+    "id",
+    "repo",
+    "commit_sha",
+    "language",
+    "difficulty",
+    "context_files",
+    "prompt",
+    "verification"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to the JSON Schema file for editor validation and autocompletion."
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique task identifier following the naming convention: task-NNN-repo-description, where NNN is a zero-padded three-digit number, repo is a short name for the source repository, and description is a kebab-case summary of the task.",
+      "pattern": "^task-[0-9]{3}-[a-z0-9]+-[a-z0-9]+(-[a-z0-9]+)*$",
+      "examples": [
+        "task-001-fastapi-swagger-ui-escaping",
+        "task-042-django-queryset-optimization"
+      ]
+    },
+    "repo": {
+      "type": "string",
+      "description": "Full URL of the source repository on GitHub.",
+      "format": "uri",
+      "examples": [
+        "https://github.com/tiangolo/fastapi",
+        "https://github.com/expressjs/express"
+      ]
+    },
+    "source_pr": {
+      "type": "string",
+      "description": "URL of the source pull request from which this task was mined. Used for traceability and to allow reviewers to compare the agent's output with the original human solution.",
+      "format": "uri",
+      "examples": [
+        "https://github.com/tiangolo/fastapi/pull/14986"
+      ]
+    },
+    "pr_title": {
+      "type": "string",
+      "description": "Original title of the pull request from which this task was mined.",
+      "examples": [
+        "Refactor logic to handle OpenAPI and Swagger UI escaping data"
+      ]
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Full 40-character hexadecimal Git SHA identifying the exact commit to checkout before presenting the task to the agent. This should be the commit immediately before the PR's changes were applied (i.e., the parent commit of the PR's first commit).",
+      "pattern": "^[0-9a-f]{40}$",
+      "examples": [
+        "2f9c914d440e99fe8b62646b51e4d24c5bcd858b"
+      ]
+    },
+    "language": {
+      "type": "array",
+      "description": "Programming languages involved in the task. The primary language should be listed first.",
+      "items": {
+        "type": "string",
+        "examples": [
+          "python",
+          "typescript",
+          "javascript",
+          "rust",
+          "go"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "difficulty": {
+      "type": "integer",
+      "description": "Task difficulty rating on a 1-4 scale, reflecting the cognitive complexity, number of files to modify, and depth of codebase understanding required.",
+      "minimum": 1,
+      "maximum": 4,
+      "enum": [1, 2, 3, 4],
+      "x-enum-descriptions": {
+        "1": "Simple: Single-file change, straightforward logic, minimal context needed (e.g., fix a typo, add a simple config option).",
+        "2": "Moderate: Multi-file change with clear scope, requires understanding local module interactions (e.g., fix a bug and add tests, refactor a function across 2-3 files).",
+        "3": "Complex: Cross-cutting change spanning multiple modules, requires deep understanding of architecture and data flow (e.g., refactor an error-handling pattern across the codebase, add a feature touching core internals).",
+        "4": "Expert: Architectural change requiring holistic codebase understanding, complex reasoning about edge cases, and potentially introducing new abstractions (e.g., redesign a subsystem, implement a new compiler pass)."
+      }
+    },
+    "context_files": {
+      "type": "array",
+      "description": "Ordered list of file paths (relative to the repository root) that the agent should read to understand and complete the task. These files collectively form the 'long context' that the agent must reason over. The order should reflect a logical reading sequence: start with the core files to modify, then related tests, then documentation.",
+      "items": {
+        "type": "string",
+        "description": "Relative file path from the repository root.",
+        "examples": [
+          "src/flask/app.py",
+          "tests/test_basic.py"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "context_tokens_estimate": {
+      "type": "integer",
+      "description": "Approximate number of tokens across all context_files when tokenized with a standard BPE tokenizer (e.g., cl100k_base). This helps categorize tasks by context window requirements: <8K (short), 8-32K (medium), 32-128K (long), 128K+ (very long).",
+      "minimum": 0,
+      "examples": [
+        5000,
+        25000,
+        100000
+      ]
+    },
+    "prompt": {
+      "type": "string",
+      "description": "Natural language task description presented to the AI coding agent. Should describe the problem, expected behavior, and what changes are needed without revealing the exact solution. The prompt should be self-contained and reference specific file paths when relevant.",
+      "minLength": 50,
+      "examples": [
+        "There is a regression in Express v5.1 where calling `app.render(view, null, callback)` throws a TypeError..."
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "description": "Defines how to verify whether the agent's solution is correct. Supports multiple verification strategies that can be combined in a hybrid approach.",
+      "required": [
+        "type",
+        "expected_files_changed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Verification strategy to use for evaluating the agent's output.",
+          "enum": [
+            "test_suite",
+            "diff_match",
+            "ast_check",
+            "hybrid"
+          ],
+          "x-enum-descriptions": {
+            "test_suite": "Run a test command and check for pass/fail. Most robust strategy for functional correctness.",
+            "diff_match": "Compare the agent's diff against a reference diff. Useful for checking structural similarity.",
+            "ast_check": "Parse the modified files into ASTs and check for specific structural properties. Language-aware verification.",
+            "hybrid": "Combine multiple verification strategies (e.g., tests must pass AND diff must touch expected files)."
+          }
+        },
+        "test_command": {
+          "type": "string",
+          "description": "Shell command to run the test suite for verification. Should be executable from the repository root after the agent's changes are applied. Required when type is 'test_suite' or 'hybrid'.",
+          "examples": [
+            "python -m pytest tests/test_basic.py -x -v",
+            "cargo test -p ruff_linter -- UP008",
+            "npx mocha --require test/support/env test/app.render.js"
+          ]
+        },
+        "expected_files_changed": {
+          "type": "array",
+          "description": "List of file paths (relative to repository root) that should be modified by a correct solution. Used to verify the agent modified the right files and as a secondary check alongside test results.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "reference_diff": {
+          "type": "string",
+          "description": "Path (relative to the evaluation dataset root) to a reference diff file containing the expected changes. Used with 'diff_match' and 'hybrid' verification types.",
+          "examples": [
+            "diffs/task-001.patch"
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for categorization, filtering, and provenance tracking.",
+      "additionalProperties": false,
+      "properties": {
+        "tags": {
+          "type": "array",
+          "description": "Free-form tags for categorizing the task by topic, change type, or other dimensions. Useful for filtering and creating evaluation subsets.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "uniqueItems": true,
+          "examples": [
+            ["bug-fix", "security", "xss-prevention"],
+            ["feature", "configuration", "api-design"]
+          ]
+        },
+        "mined_from": {
+          "type": "string",
+          "description": "Human-readable reference to the source of this task, typically a PR number.",
+          "examples": [
+            "PR #14986",
+            "Issue #1234"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "description": "Date when this task manifest was created.",
+          "format": "date",
+          "examples": [
+            "2026-03-29"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-004-flask-trusted-hosts-config",
+  "repo": "https://github.com/pallets/flask",
+  "source_pr": "https://github.com/pallets/flask/pull/5637",
+  "pr_title": "configure and check `request.trusted_hosts`",
+  "commit_sha": "10bdf61a0f751f3cb000f8f8ac5ac5b4bb535677",
+  "language": ["python"],
+  "difficulty": 2,
+  "context_files": [
+    "src/flask/app.py",
+    "docs/config.rst",
+    "tests/test_request.py",
+    "CHANGES.rst"
+  ],
+  "context_tokens_estimate": 12000,
+  "prompt": "Add a new `TRUSTED_HOSTS` configuration option to Flask that allows developers to specify a list of trusted host/domain names. In `Flask.create_url_adapter` (which is called when creating a `RequestContext`), read the `TRUSTED_HOSTS` config and set `request.trusted_hosts` to that value. Then call `request.host` with the trusted hosts config to trigger Werkzeug's host validation and pre-cache the `host` property. This prevents host header attacks where a malicious `Host` header could be used to generate incorrect URLs. Add the configuration documentation in `docs/config.rst` and add tests in `tests/test_request.py` verifying that requests with untrusted host headers are rejected while trusted ones are accepted.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "python -m pytest tests/test_request.py -x -v",
+    "expected_files_changed": [
+      "src/flask/app.py",
+      "docs/config.rst",
+      "tests/test_request.py",
+      "CHANGES.rst"
+    ]
+  },
+  "metadata": {
+    "tags": ["feature", "security", "configuration", "host-validation"],
+    "mined_from": "PR #5637",
+    "created_at": "2026-03-29"
+  }
+}

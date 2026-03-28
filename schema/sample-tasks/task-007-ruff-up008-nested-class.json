@@ -1,0 +1,31 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-007-ruff-up008-nested-class",
+  "repo": "https://github.com/astral-sh/ruff",
+  "source_pr": "https://github.com/astral-sh/ruff/pull/24273",
+  "pr_title": "Fix UP008 nested class matching",
+  "commit_sha": "0f41bc554bd89d14dbeb7e1791b34dc7319339bc",
+  "language": ["rust"],
+  "difficulty": 2,
+  "context_files": [
+    "crates/ruff_linter/src/rules/pyupgrade/rules/super_call_with_parameters.rs",
+    "crates/ruff_linter/resources/test/fixtures/pyupgrade/UP008.py",
+    "crates/ruff_linter/src/rules/pyupgrade/snapshots/ruff_linter__rules__pyupgrade__tests__UP008.py.snap"
+  ],
+  "context_tokens_estimate": 12000,
+  "prompt": "The UP008 rule (`super-call-with-parameters`) in Ruff incorrectly triggers inside nested classes. When a nested class like `class Outer: class Inner(Base): ...` has a method calling `super(Inner, self).__init__()`, UP008 suggests removing the parameters to use bare `super()`. However, inside a nested class, referencing `Inner` by name is actually a `NameError` at runtime because the inner class name is not in scope within its own methods. Therefore, UP008 should NOT fire when the `super()` call references the inner class name inside a nested class context. Fix the rule implementation in `crates/ruff_linter/src/rules/pyupgrade/rules/super_call_with_parameters.rs` to detect when the class being passed to `super()` is a nested class and skip the diagnostic in that case. Update the test fixture and snapshot accordingly.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "cargo test -p ruff_linter -- UP008",
+    "expected_files_changed": [
+      "crates/ruff_linter/src/rules/pyupgrade/rules/super_call_with_parameters.rs",
+      "crates/ruff_linter/resources/test/fixtures/pyupgrade/UP008.py",
+      "crates/ruff_linter/src/rules/pyupgrade/snapshots/ruff_linter__rules__pyupgrade__tests__UP008.py.snap"
+    ]
+  },
+  "metadata": {
+    "tags": ["bug-fix", "linter-rule", "false-positive", "nested-class"],
+    "mined_from": "PR #24273",
+    "created_at": "2026-03-29"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-008-ruff-w391-notebook-cells",
+  "repo": "https://github.com/astral-sh/ruff",
+  "source_pr": "https://github.com/astral-sh/ruff/pull/24236",
+  "pr_title": "Fix W391 fixes for consecutive empty notebook cells",
+  "commit_sha": "627e2a04269400ea88f65e64797666ad32604204",
+  "language": ["rust"],
+  "difficulty": 3,
+  "context_files": [
+    "crates/ruff_linter/src/rules/pycodestyle/rules/too_many_newlines_at_end_of_file.rs",
+    "crates/ruff_linter/src/rules/pycodestyle/mod.rs",
+    "crates/ruff_notebook/src/cell.rs",
+    "crates/ruff_notebook/src/notebook.rs",
+    "crates/ruff_notebook/src/lib.rs",
+    "crates/ruff_linter/resources/test/fixtures/pycodestyle/W391_consecutive_empty_cells.ipynb",
+    "crates/ruff_linter/resources/test/fixtures/pycodestyle/W391_consecutive_empty_cells_expected.ipynb",
+    "crates/ruff_linter/src/rules/pycodestyle/snapshots/ruff_linter__rules__pycodestyle__tests__preview__W391_W391.ipynb.snap"
+  ],
+  "context_tokens_estimate": 18000,
+  "prompt": "Ruff panics when running the W391 rule (too many newlines at end of file) on Jupyter notebooks that contain consecutive empty code cells. The root cause is that trailing newline diagnostics are computed across the concatenated notebook source rather than per-cell, which leads to invalid source ranges when empty cells are concatenated. Fix this by computing W391 trailing newline diagnostics per-cell instead of across the entire concatenated file. This requires: (1) In `crates/ruff_notebook/src/cell.rs`, add a method to determine if a cell is empty or identify cell boundaries. (2) In `crates/ruff_notebook/src/notebook.rs`, expose cell boundary information. (3) In `crates/ruff_linter/src/rules/pycodestyle/rules/too_many_newlines_at_end_of_file.rs`, refactor the rule to operate per-cell when processing notebooks. (4) In `crates/ruff_linter/src/rules/pycodestyle/mod.rs`, add test cases for the consecutive empty cells scenario. Add test fixture `.ipynb` files with consecutive empty cells and their expected fixed versions.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "cargo test -p ruff_linter -- W391",
+    "expected_files_changed": [
+      "crates/ruff_linter/src/rules/pycodestyle/rules/too_many_newlines_at_end_of_file.rs",
+      "crates/ruff_linter/src/rules/pycodestyle/mod.rs",
+      "crates/ruff_notebook/src/cell.rs",
+      "crates/ruff_notebook/src/notebook.rs",
+      "crates/ruff_notebook/src/lib.rs"
+    ]
+  },
+  "metadata": {
+    "tags": ["bug-fix", "panic-fix", "jupyter-notebook", "per-cell-diagnostics"],
+    "mined_from": "PR #24236",
+    "created_at": "2026-03-29"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-006-deno-standalone-argv-translation",
+  "repo": "https://github.com/denoland/deno",
+  "source_pr": "https://github.com/denoland/deno/pull/32980",
+  "pr_title": "fix(compile): skip Node-to-Deno arg translation in standalone binaries",
+  "commit_sha": "2186d72c3068f0beaab1cad662cf7c1c9ebef2f5",
+  "language": ["typescript", "rust"],
+  "difficulty": 3,
+  "context_files": [
+    "ext/node/polyfills/child_process.ts",
+    "ext/node/polyfills/internal/child_process.ts",
+    "tests/specs/compile/standalone_spawn_self/__test__.jsonc",
+    "tests/specs/compile/standalone_spawn_self/main.out",
+    "tests/specs/compile/standalone_spawn_self/main.ts"
+  ],
+  "context_tokens_estimate": 15000,
+  "prompt": "When a `deno compile`d standalone binary spawns itself using `child_process.spawn(process.execPath, args)`, Deno's child_process polyfill detects that the file matches `Deno.execPath()` and translates Node.js-style arguments (like `--max-old-space-size=4096`) into Deno CLI arguments (`run -A --unstable-node-globals --unstable-bare-node-builtins --unstable-detect-cjs --v8-flags=...`). In standalone binaries, these injected Deno flags end up in `process.argv`, causing argument parsers like yargs to fail with 'Unknown arguments' errors. Fix this by checking `Deno.build.standalone` before applying the Node-to-Deno arg translation in two places: (1) the `buildCommand()` function in `ext/node/polyfills/internal/child_process.ts` for `spawn`, and (2) the `fork()` function in `ext/node/polyfills/child_process.ts`. Standalone binaries already have permissions, unstable config, and V8 flags baked in, so translation is unnecessary. Add a spec test that compiles a binary which spawns itself and verifies no Deno flags leak into the child's `process.argv`.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "cargo test -p deno_runtime standalone_spawn_self",
+    "expected_files_changed": [
+      "ext/node/polyfills/child_process.ts",
+      "ext/node/polyfills/internal/child_process.ts",
+      "tests/specs/compile/standalone_spawn_self/__test__.jsonc",
+      "tests/specs/compile/standalone_spawn_self/main.out",
+      "tests/specs/compile/standalone_spawn_self/main.ts"
+    ]
+  },
+  "metadata": {
+    "tags": ["bug-fix", "standalone-binary", "child-process", "argv"],
+    "mined_from": "PR #32980",
+    "created_at": "2026-03-29"
+  }
+}

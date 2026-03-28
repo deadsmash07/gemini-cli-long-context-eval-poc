@@ -1,0 +1,41 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-003-flask-teardown-error-collection",
+  "repo": "https://github.com/pallets/flask",
+  "source_pr": "https://github.com/pallets/flask/pull/5928",
+  "pr_title": "all teardown callbacks are called despite errors",
+  "commit_sha": "7b0088693ece1bd3a9238a6fdf56ed8df7a4d43b",
+  "language": ["python"],
+  "difficulty": 3,
+  "context_files": [
+    "src/flask/app.py",
+    "src/flask/ctx.py",
+    "src/flask/helpers.py",
+    "tests/test_appctx.py",
+    "tests/test_basic.py",
+    "tests/test_blueprints.py",
+    "tests/test_helpers.py",
+    "tests/test_testing.py",
+    "CHANGES.rst",
+    "docs/appcontext.rst"
+  ],
+  "context_tokens_estimate": 25000,
+  "prompt": "Currently in Flask, if a teardown callback raises an exception, subsequent teardown callbacks are skipped. This means resources may not be properly cleaned up. Refactor Flask's teardown mechanism so that ALL teardown callbacks (both app and request teardown callbacks, plus signals) are always called regardless of whether earlier callbacks raise errors. Errors should be collected and raised at the end. On Python >= 3.11, use `ExceptionGroup` to collect errors from app teardown and request teardown separately, then wrap them in an outer `ExceptionGroup` for overall teardown. On Python 3.10, raise the first collected error (which matches current behavior). Implement a helper function in `src/flask/helpers.py` that runs a list of callables while collecting errors. Update `src/flask/app.py` (the `do_teardown_request` and `do_teardown_appcontext` methods) and `src/flask/ctx.py` to use this new error-collecting pattern. Add comprehensive tests in `tests/test_appctx.py` and `tests/test_helpers.py` that verify all callbacks run even when some raise exceptions, and that the correct error types are raised.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "python -m pytest tests/test_appctx.py tests/test_helpers.py tests/test_basic.py -x -v",
+    "expected_files_changed": [
+      "src/flask/app.py",
+      "src/flask/ctx.py",
+      "src/flask/helpers.py",
+      "tests/test_appctx.py",
+      "tests/test_basic.py",
+      "tests/test_helpers.py"
+    ]
+  },
+  "metadata": {
+    "tags": ["bug-fix", "error-handling", "teardown", "exception-group"],
+    "mined_from": "PR #5928",
+    "created_at": "2026-03-29"
+  }
+}

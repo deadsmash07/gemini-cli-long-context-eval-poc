@@ -1,0 +1,32 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-005-astro-meta-top-level-zod-schema",
+  "repo": "https://github.com/withastro/astro",
+  "source_pr": "https://github.com/withastro/astro/pull/16093",
+  "pr_title": "fix: Fix meta being stripped from top-level Zod schema",
+  "commit_sha": "bb69d9a31c2843f4fc8c1736c60ad74c1582e1a8",
+  "language": ["typescript"],
+  "difficulty": 2,
+  "context_files": [
+    "packages/astro/src/content/types-generator.ts",
+    "packages/astro/test/data-collections-schema.test.js",
+    "packages/astro/test/fixtures/data-collections-schema/src/content.config.ts",
+    ".changeset/full-hounds-study.md"
+  ],
+  "context_tokens_estimate": 10000,
+  "prompt": "In Astro's content collections, when a top-level content collection schema uses Zod's `.meta()` properties (e.g., for JSON Schema generation), the meta information is being stripped and not rendered into the generated JSON Schema. This is a regression from the Zod 4 bump. The issue is in `packages/astro/src/content/types-generator.ts` where the type generation logic does not account for `.meta` on the top-level schema object (it only works for nested properties). Fix the types generator to preserve `.meta` properties on top-level Zod schemas when generating JSON Schema output. Update the test fixture `content.config.ts` to use `.meta()` on a top-level schema and add a test assertion in `data-collections-schema.test.js` verifying that the meta properties appear in the generated JSON Schema.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "node --test packages/astro/test/data-collections-schema.test.js",
+    "expected_files_changed": [
+      "packages/astro/src/content/types-generator.ts",
+      "packages/astro/test/data-collections-schema.test.js",
+      "packages/astro/test/fixtures/data-collections-schema/src/content.config.ts"
+    ]
+  },
+  "metadata": {
+    "tags": ["bug-fix", "content-collections", "zod", "json-schema"],
+    "mined_from": "PR #16093",
+    "created_at": "2026-03-29"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-002-express-render-null-options",
+  "repo": "https://github.com/expressjs/express",
+  "source_pr": "https://github.com/expressjs/express/pull/6903",
+  "pr_title": "feat: Allow passing null or undefined as the value for options in app.render",
+  "commit_sha": "a479419b16f5b97eb20f5dbae5848708ff30ce2d",
+  "language": ["javascript"],
+  "difficulty": 2,
+  "context_files": [
+    "lib/application.js",
+    "test/app.render.js",
+    "History.md"
+  ],
+  "context_tokens_estimate": 5000,
+  "prompt": "There is a regression in Express v5.1 where calling `app.render(view, null, callback)` or `app.render(view, undefined, callback)` throws a TypeError. This is because the spread merge for options was introduced without guarding against null/undefined values. Previously, passing null or undefined as the options argument to `app.render` worked fine and was equivalent to passing no locals. Fix the `app.render` method in `lib/application.js` to normalize `options` to `{}` whenever it is null or undefined (while still handling the existing case where the callback is passed as the second argument). Add regression tests in `test/app.render.js` covering both the null and undefined cases.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "npx mocha --require test/support/env --reporter spec --check-leaks test/app.render.js",
+    "expected_files_changed": [
+      "lib/application.js",
+      "test/app.render.js"
+    ]
+  },
+  "metadata": {
+    "tags": ["bug-fix", "regression", "api-compatibility"],
+    "mined_from": "PR #6903",
+    "created_at": "2026-03-29"
+  }
+}
