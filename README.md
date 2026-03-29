@@ -17,9 +17,23 @@ npm install
 npm run demo        # Validate all tasks + print dataset stats
 npm run eval        # Dry-run eval (validates setup, computes static metrics)
 npm run eval:live   # Run evals against real Gemini CLI (requires gemini binary)
+npm run eval:api    # Run evals via Gemini REST API (needs GEMINI_API_KEY in .env)
 npm run stats       # Print dataset summary table
 npm run validate    # Validate task manifests against schema
 ```
+
+## Live Evaluation Results
+
+Ran 3 L2 tasks against the Gemini REST API (March 2026):
+
+| Task | gemini-2.5-flash | gemini-2.5-pro |
+|------|-----------------|----------------|
+| task-002 (Express, L2) | **2/2 (100%)** 24.8s | **2/2 (100%)** 44.7s |
+| task-004 (Flask, L2) | **4/4 (100%)** 33.0s | 2/4 (50%) 63.9s |
+| task-001 (FastAPI, L2) | 1/4 (25%) 33.2s | 0/4 (0%) 62.6s |
+| **Average** | **75% accuracy** | **50% accuracy** |
+
+The FastAPI task had 2 of 4 context files missing at the pinned SHA, making it harder for both models. Flash outperformed Pro on file identification accuracy while being 2x faster — consistent with Flash's optimization for focused tasks.
 
 ## What's in This POC
 

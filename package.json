@@ -10,6 +10,8 @@
     "analyze": "npx tsx pipeline/analyze_activity_log.ts",
     "eval": "npx tsx runner/run-eval.ts",
     "eval:live": "npx tsx runner/run-eval.ts --live",
+    "eval:api": "npx tsx runner/api-eval.ts",
+    "eval:api:pro": "npx tsx runner/api-eval.ts --model gemini-2.5-pro",
     "stats": "npx tsx runner/stats.ts",
     "demo": "npm run validate && echo '--- All tasks valid ---' && npx tsx runner/stats.ts"
   },
