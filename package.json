@@ -1,0 +1,20 @@
+{
+  "name": "gemini-cli-long-context-eval-poc",
+  "version": "0.1.0",
+  "description": "POC: Long-context coding evaluation dataset for Gemini CLI",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "validate": "python3 pipeline/validate_task.py --schema schema/task-manifest.schema.json --tasks schema/sample-tasks/",
+    "mine": "python3 pipeline/mine_tasks.py",
+    "analyze": "npx tsx pipeline/analyze_activity_log.ts",
+    "eval": "npx tsx runner/run-eval.ts",
+    "eval:live": "npx tsx runner/run-eval.ts --live",
+    "stats": "npx tsx runner/stats.ts",
+    "demo": "npm run validate && echo '--- All tasks valid ---' && npx tsx runner/stats.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -8,7 +8,18 @@ Gemini CLI's [behavioral evals](https://github.com/google-gemini/gemini-cli/tree
 
 **The gap**: no evaluation dataset measures how well Gemini CLI leverages its 1M+ token context window for real-world, multi-file coding tasks — tasks that require reading across files, tracing dependencies, and implementing changes that span module boundaries.
 
-This project fills that gap by creating 30-50 curated coding tasks mined from real open-source PRs, integrated into Gemini CLI's existing Vitest-based eval pipeline.
+This project fills that gap with 30-50 curated coding tasks mined from real open-source PRs, integrated into Gemini CLI's existing Vitest-based eval pipeline.
+
+## Quick Start
+
+```bash
+npm install
+npm run demo        # Validate all tasks + print dataset stats
+npm run eval        # Dry-run eval (validates setup, computes static metrics)
+npm run eval:live   # Run evals against real Gemini CLI (requires gemini binary)
+npm run stats       # Print dataset summary table
+npm run validate    # Validate task manifests against schema
+```
 
 ## What's in This POC
 
@@ -16,14 +27,13 @@ This project fills that gap by creating 30-50 curated coding tasks mined from re
 schema/
   task-manifest.schema.json        # JSON Schema for CodingTaskManifest
   sample-tasks/                    # 8 real tasks mined from OSS repos
-    task-001-fastapi-*.json        #   FastAPI (Python, L2)
-    task-002-express-*.json        #   Express (JavaScript, L2)
-    task-003-flask-*.json          #   Flask (Python, L3)
-    task-004-flask-*.json          #   Flask (Python, L2)
-    task-005-astro-*.json          #   Astro (TypeScript, L2)
-    task-006-deno-*.json           #   Deno (TypeScript+Rust, L3)
-    task-007-ruff-*.json           #   Ruff (Rust, L2)
-    task-008-ruff-*.json           #   Ruff (Rust, L3)
+
+runner/
+  coding-task-runner.ts            # CodingTaskRunner — clones repos, runs agent, verifies
+  metrics.ts                       # RFS, PES, CCS, TER metric implementations
+  failure-taxonomy.ts              # 7-mode failure classification
+  run-eval.ts                      # CLI entry point (dry-run and live modes)
+  stats.ts                         # Dataset summary statistics
 
 pipeline/
   mine_tasks.py                    # PR mining script (GitHub API)
@@ -31,7 +41,7 @@ pipeline/
   analyze_activity_log.ts          # Activity log -> eval metrics
 
 eval-integration/
-  coding-task.eval.ts              # Demo eval using existing TestRig
+  coding-task.eval.ts              # Demo eval using existing TestRig + evalTest()
   vitest.config.ts                 # Extended timeout config
 
 docs/
@@ -40,9 +50,32 @@ docs/
   architecture.md                  # Integration with Gemini CLI eval infra
 ```
 
-## Task Difficulty Taxonomy
+## Evaluation Metrics
 
-Tasks are classified into 4 difficulty levels based on the scope of reasoning required:
+Four metrics measure agent performance on each task:
+
+| Metric | Formula | What It Measures |
+|--------|---------|-----------------|
+| **RFS** (Reasoning Forcing Score) | `(context_files - changed_files) * cross_ref_weight + dep_depth` | How much cross-component reasoning the task demands |
+| **PES** (Path Efficiency Score) | `relevant_files_read / total_files_read` | How efficiently the agent navigated to the solution |
+| **CCS** (Context Coverage Score) | `context_files_read / total_context_files` | What fraction of required context the agent consumed |
+| **TER** (Tool Efficiency Ratio) | `(edits + targeted_reads) / total_tool_calls` | Ratio of productive tool calls to total |
+
+## Failure Taxonomy
+
+When a task fails, the runner classifies the failure into one of 7 modes:
+
+| Mode | Description |
+|------|-------------|
+| `context_insufficient` | Agent didn't read enough context files |
+| `wrong_files_targeted` | Agent edited files not in the expected change set |
+| `shallow_fix` | Minimal change that doesn't address root cause |
+| `cross_component_miss` | Fixed one file but missed related changes |
+| `test_regression` | Fix introduced new test failures |
+| `timeout` | Agent exceeded time limit |
+| `complete_hallucination` | Changes unrelated to the task |
+
+## Task Difficulty Taxonomy
 
 | Level | Name | Files | Context | Eval Policy |
 |-------|------|-------|---------|-------------|
@@ -51,23 +84,43 @@ Tasks are classified into 4 difficulty levels based on the scope of reasoning re
 | L3 | Architectural | 5-15 | 3K-15K lines | `USUALLY_PASSES` |
 | L4 | Multi-step Reasoning | 10+ | 15K+ lines | `USUALLY_PASSES` |
 
-See [docs/difficulty-taxonomy.md](docs/difficulty-taxonomy.md) for the full framework, including the connection to research on hierarchical reasoning in LLMs.
+See [docs/difficulty-taxonomy.md](docs/difficulty-taxonomy.md) for the full framework.
+
+## CodingTaskRunner
+
+The `CodingTaskRunner` is the core eval runner. It wraps Gemini CLI's existing `TestRig` pattern:
+
+1. **Setup**: Clones the target repo (bare clone cache at `~/.cache/coding-task-evals/repos/`), creates an isolated git worktree at the pinned `commit_sha`
+2. **Execute**: Spawns Gemini CLI with the task prompt, captures activity log via `GEMINI_CLI_ACTIVITY_LOG_TARGET`
+3. **Verify**: Runs the task's verification (test suite execution or diff comparison)
+4. **Analyze**: Computes RFS, PES, CCS, TER metrics from the activity log
+5. **Classify**: If failed, classifies failure mode into the 7-mode taxonomy
+
+```typescript
+const runner = new CodingTaskRunner(manifest, {
+  cacheDir: '~/.cache/coding-task-evals/repos/',
+  timeout: 900000, // 15 minutes
+});
+const result = await runner.run();
+// result.metrics: { rfs, pes, ccs, ter }
+// result.failure?: { mode, confidence, evidence }
+```
 
 ## Integration with Gemini CLI
 
-The key design decision: this dataset integrates with Gemini CLI's **existing** eval infrastructure rather than building a standalone system.
+This dataset integrates with Gemini CLI's **existing** eval infrastructure:
 
-- Tasks are defined as `CodingTaskManifest` JSON files — an extension of the existing [`EvalCase`](https://github.com/google-gemini/gemini-cli/blob/main/evals/test-helper.ts#L199-L207) interface pattern
-- The eval runner uses [`TestRig`](https://github.com/google-gemini/gemini-cli/blob/main/packages/test-utils/src/test-rig.ts) for test execution, tool call logging, and cleanup
+- Tasks defined as `CodingTaskManifest` JSON files — extending the [`EvalCase`](https://github.com/google-gemini/gemini-cli/blob/main/evals/test-helper.ts#L199-L207) interface pattern
+- Runner wraps [`TestRig`](https://github.com/google-gemini/gemini-cli/blob/main/packages/test-utils/src/test-rig.ts) for execution, tool call logging, and cleanup
 - Results feed into the existing [`aggregate_evals.js`](https://github.com/google-gemini/gemini-cli/blob/main/scripts/aggregate_evals.js) aggregation pattern
-- Eval policies (`ALWAYS_PASSES` / `USUALLY_PASSES`) map directly to difficulty levels
+- Eval policies (`ALWAYS_PASSES` / `USUALLY_PASSES`) map to difficulty levels
 - Activity logs use the same JSONL format via `GEMINI_CLI_ACTIVITY_LOG_TARGET`
 
 See [docs/architecture.md](docs/architecture.md) for the full integration design.
 
 ## Sample Tasks
 
-All 8 sample tasks are mined from **real merged PRs** in popular open-source repositories (2024-2026 commits for contamination resistance):
+All 8 tasks are mined from **real merged PRs** (2024-2026 commits for contamination resistance):
 
 | Task | Repo | Lang | Diff | Description |
 |------|------|------|------|-------------|
@@ -80,39 +133,27 @@ All 8 sample tasks are mined from **real merged PRs** in popular open-source rep
 | 007 | Ruff | Rust | L2 | Fix UP008 false positive on nested class `super()` |
 | 008 | Ruff | Rust | L3 | Fix W391 panic on consecutive empty Jupyter cells |
 
-## Running the Pipeline
+## Pipeline
 
 ### Mine tasks from a repository
 
 ```bash
 export GITHUB_TOKEN=ghp_...
-python pipeline/mine_tasks.py \
-  --repo tiangolo/fastapi \
-  --language python \
-  --min-files 3 \
-  --output tasks.json
+python pipeline/mine_tasks.py --repo tiangolo/fastapi --language python --min-files 3 --output tasks.json
 ```
 
 ### Validate task manifests
 
 ```bash
-python pipeline/validate_task.py \
-  --schema schema/task-manifest.schema.json \
-  --tasks schema/sample-tasks/
+npm run validate
+# or: python pipeline/validate_task.py --schema schema/task-manifest.schema.json --tasks schema/sample-tasks/
 ```
 
 ### Analyze activity logs
 
 ```bash
-npx tsx pipeline/analyze_activity_log.ts \
-  --logs-dir evals/logs/ \
-  --manifests schema/sample-tasks/ \
-  --output report.json
+npx tsx pipeline/analyze_activity_log.ts --logs-dir evals/logs/ --manifests schema/sample-tasks/ --output report.json
 ```
-
-## Demo Eval
-
-The [eval-integration/coding-task.eval.ts](eval-integration/coding-task.eval.ts) file demonstrates how a Level 2 coding task integrates with Gemini CLI's `evalTest()` + `TestRig` pattern. It sets up a realistic 10-file Express/TypeScript project with a subtle auth middleware bug (context propagation via `Object.assign` copy instead of direct mutation) and asserts that the agent correctly identifies and fixes it.
 
 ## Related
 
