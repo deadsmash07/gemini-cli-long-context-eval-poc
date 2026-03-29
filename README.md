@@ -4,11 +4,9 @@ A proof-of-concept for [GSoC 2026 Issue #23316](https://github.com/google-gemini
 
 ## Motivation
 
-Gemini CLI's [behavioral evals](https://github.com/google-gemini/gemini-cli/tree/main/evals) test individual agent behaviors (tool selection, delegation, memory) using small, synthetic file setups. Industry benchmarks like SWE-bench measure general capabilities but run outside Gemini CLI's tool infrastructure.
+Gemini CLI has [behavioral evals](https://github.com/google-gemini/gemini-cli/tree/main/evals) that test whether the agent picks the right tool or delegates correctly. These are useful but small — the file setups are synthetic and rarely span more than a few files. SWE-bench tests bigger tasks, but it runs in its own Docker container, disconnected from the eval infrastructure the team actually uses day to day.
 
-**The gap**: no evaluation dataset measures how well Gemini CLI leverages its 1M+ token context window for real-world, multi-file coding tasks — tasks that require reading across files, tracing dependencies, and implementing changes that span module boundaries.
-
-This project fills that gap with 30-50 curated coding tasks mined from real open-source PRs, integrated into Gemini CLI's existing Vitest-based eval pipeline.
+What's missing is something in between: real multi-file coding tasks that run inside Gemini CLI's own tool and eval pipeline. Tasks where you need to read 5-10 files, trace dependencies, and produce a coordinated fix. That's what this project builds — 30-50 tasks mined from real OSS pull requests, integrated with the existing `TestRig` and `evalTest()` infrastructure.
 
 ## Quick Start
 
@@ -26,14 +24,18 @@ npm run validate    # Validate task manifests against schema
 
 Ran 3 L2 tasks against the Gemini REST API (March 2026):
 
-| Task | gemini-2.5-flash | gemini-2.5-pro |
-|------|-----------------|----------------|
-| task-002 (Express, L2) | **2/2 (100%)** 24.8s | **2/2 (100%)** 44.7s |
-| task-004 (Flask, L2) | **4/4 (100%)** 33.0s | 2/4 (50%) 63.9s |
-| task-001 (FastAPI, L2) | 1/4 (25%) 33.2s | 0/4 (0%) 62.6s |
-| **Average** | **75% accuracy** | **50% accuracy** |
+| Task | 2.5-flash | 2.5-pro | 3-pro | 3.1-pro |
+|------|-----------|---------|-------|---------|
+| task-002 (Express, L2) | **2/2 (100%)** 25s | **2/2 (100%)** 45s | **2/2 (100%)** 55s | **2/2 (100%)** 54s |
+| task-004 (Flask, L2) | **4/4 (100%)** 33s | 2/4 (50%) 64s | 3/4 (75%) 63s | 3/4 (75%) 69s |
+| task-001 (FastAPI, L2) | 1/4 (25%) 33s | 0/4 (0%) 63s | 0/4 (0%) 70s | 0/4 (0%) 68s |
+| **Average** | **75%** | 50% | 58% | 58% |
 
-The FastAPI task had 2 of 4 context files missing at the pinned SHA, making it harder for both models. Flash outperformed Pro on file identification accuracy while being 2x faster — consistent with Flash's optimization for focused tasks.
+Some observations from these runs:
+
+- **All 4 models got the Express task right** — it had full context (3/3 files readable) and a clear bug description. Straightforward L2 task.
+- **Flash outperformed Pro models on file identification.** Pro responses are more verbose and describe changes abstractly rather than naming file paths, which our parser misses. This points to a real challenge in eval design: how you parse model output matters as much as what the model says.
+- **The FastAPI task was hard for everyone.** 2 of its 4 context files don't exist at the pinned SHA (they were created by the PR itself). All Pro models scored 0%. This is the kind of task design subtlety the dataset is built to catch — tasks where pre-PR state doesn't contain the test files need different verification strategies.
 
 ## What's in This POC
 
