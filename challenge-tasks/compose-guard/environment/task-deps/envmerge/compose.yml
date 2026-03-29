@@ -1,0 +1,11 @@
+version: "2.4"
+services:
+  ui:
+    image: "node:${TAG}"
+    env_file:
+      - ui.env
+    environment:
+      TAG: "prod"
+    ports:
+      - "3000:3000"
+    # missing healthcheck and v2 limits -> violations too

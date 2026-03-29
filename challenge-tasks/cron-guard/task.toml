@@ -1,0 +1,20 @@
+version = "1.0"
+
+[metadata]
+author_name = "unknown"
+author_email = "unknown"
+difficulty = "hard"
+category = "security"
+tags = [ "cron", "static-analysis", "security", "deterministic-output", "compact-json", "cli",]
+
+[verifier]
+timeout_sec = 360.0
+
+[agent]
+timeout_sec = 360.0
+
+[environment]
+build_timeout_sec = 600.0
+cpus = 1
+memory = "2G"
+storage = "4G"

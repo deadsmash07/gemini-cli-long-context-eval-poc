@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  base:
+    image: python:3.12
+    ports:
+      - "9000:9000"
+    depends_on:
+      - db
+  db:
+    image: postgres@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "256M"

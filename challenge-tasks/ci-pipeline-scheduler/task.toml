@@ -1,0 +1,18 @@
+version = "1.0"
+
+[metadata]
+difficulty = "hard"
+category = "software-engineering"
+tags = [ "python", "scheduler", "ci-cd", "priority-queue", "resource-management",]
+
+[verifier]
+timeout_sec = 180.0
+
+[agent]
+timeout_sec = 600.0
+
+[environment]
+build_timeout_sec = 120.0
+cpus = 1
+memory = "2G"
+storage = "4G"

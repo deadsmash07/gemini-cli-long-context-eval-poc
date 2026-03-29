@@ -1,0 +1,11 @@
+# Global env
+MAILTO=
+SHELL=/bin/sh
+
+# Every day at 00:05
+5 0 * * * /usr/local/bin/backup-db >/var/log/backup.log 2>&1
+# Duplicate to test duplicate_job
+5 0 * * * /usr/local/bin/backup-db >/var/log/backup.log 2>&1
+
+# No output capture; MAILTO is empty so should be flagged
+15 1 * * * /usr/local/bin/rotate-temp

@@ -1,0 +1,22 @@
+version: "3.8"
+services:
+  api:
+    extends:
+      file: base.yml
+      service: base
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:9000/health
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "256M"
+
+  web:
+    extends:
+      file: base.yml
+      service: base

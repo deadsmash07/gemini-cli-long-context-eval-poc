@@ -1,0 +1,12 @@
+version: "3.7"
+services:
+  a:
+    extends:
+      file: compose.yaml
+      service: b
+  b:
+    extends:
+      file: compose.yaml
+      service: a
+  lonely:
+    image: redis:7

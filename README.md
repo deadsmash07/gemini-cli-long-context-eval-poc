@@ -40,12 +40,40 @@ Some observations from these runs:
 - **Flash outperformed Pro models on file identification.** Pro responses are more verbose and describe changes abstractly rather than naming file paths, which our parser misses. This points to a real challenge in eval design: how you parse model output matters as much as what the model says.
 - **The FastAPI task was hard for everyone.** 2 of its 4 context files don't exist at the pinned SHA (they were created by the PR itself). All Pro models scored 0%. This is the kind of task design subtlety the dataset is built to catch - tasks where pre-PR state doesn't contain the test files need different verification strategies.
 
+## Two-Tier Dataset
+
+The dataset combines two complementary task types:
+
+| | Tier 1: PR-mined | Tier 2: Challenge tasks |
+|---|---|---|
+| **Source** | Real merged pull requests | Expert-designed challenges |
+| **Count** | 8 tasks (target: 30-50) | 7 tasks |
+| **Difficulty** | L2-L3 | L3-L4 (hard) |
+| **Languages** | Python, JS, TS, Rust | Python |
+| **Verification** | Repo test suite | Docker container + custom tests |
+| **Contamination** | SHA-pinned, post-cutoff PRs | Zero risk (original tasks) |
+| **SOTA performance** | Flash 75%, Pro 50-58% | SOTA models fail |
+| **Test coverage** | Varies by repo | ~2,700 lines of tests |
+
+Automated mining gives ecological validity and scale. Hand-crafted tasks give difficulty control and contamination resistance. This mirrors the two-tier approach used in Google DeepMind's Colab-Bench.
+
+See [challenge-tasks/README.md](challenge-tasks/README.md) for details on Tier 2.
+
 ## What's in This POC
 
 ```
 schema/
   task-manifest.schema.json        # JSON Schema for CodingTaskManifest
-  sample-tasks/                    # 8 real tasks mined from OSS repos
+  sample-tasks/                    # Tier 1: 8 real tasks mined from OSS repos
+
+challenge-tasks/                   # Tier 2: 7 expert-designed Docker tasks (L3-L4)
+  build-queue-coordinator/         #   Multi-module build queue with preemption (medium)
+  ci-pipeline-scheduler/           #   CI pipeline with resource constraints (hard)
+  cicd-secrets-leak-scanner/       #   Secrets detection across CI configs (hard)
+  compose-guard/                   #   Docker Compose linter with extends resolution (hard)
+  container-image-security-audit/  #   Container security auditor (hard)
+  cron-guard/                      #   Cron config static analyzer (hard)
+  git-hook-generator/              #   Git hook generator from config (medium)
 
 runner/
   coding-task-runner.ts            # CodingTaskRunner - clones repos, runs agent, verifies

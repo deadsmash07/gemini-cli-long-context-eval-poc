@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  web:
+    image: nginx:1.25
+    ports:
+      - "8080:80"
+  worker:
+    build: ./worker
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: "256M"
+    healthcheck:
+      test: ["CMD", "true"]
