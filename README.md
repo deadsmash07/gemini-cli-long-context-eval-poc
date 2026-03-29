@@ -1,12 +1,12 @@
-# Long-Context Coding Evaluation Dataset — Proof of Concept
+# Long-Context Coding Evaluation Dataset - Proof of Concept
 
 A proof-of-concept for [GSoC 2026 Issue #23316](https://github.com/google-gemini/gemini-cli/issues/23316): building a benchmark dataset of complex, multi-file coding tasks that evaluate Gemini CLI's long-context reasoning capabilities.
 
 ## Motivation
 
-Gemini CLI has [behavioral evals](https://github.com/google-gemini/gemini-cli/tree/main/evals) that test whether the agent picks the right tool or delegates correctly. These are useful but small — the file setups are synthetic and rarely span more than a few files. SWE-bench tests bigger tasks, but it runs in its own Docker container, disconnected from the eval infrastructure the team actually uses day to day.
+Gemini CLI has [behavioral evals](https://github.com/google-gemini/gemini-cli/tree/main/evals) that test whether the agent picks the right tool or delegates correctly. These are useful but small - the file setups are synthetic and rarely span more than a few files. SWE-bench tests bigger tasks, but it runs in its own Docker container, disconnected from the eval infrastructure the team actually uses day to day.
 
-What's missing is something in between: real multi-file coding tasks that run inside Gemini CLI's own tool and eval pipeline. Tasks where you need to read 5-10 files, trace dependencies, and produce a coordinated fix. That's what this project builds — 30-50 tasks mined from real OSS pull requests, integrated with the existing `TestRig` and `evalTest()` infrastructure.
+What's missing is something in between: real multi-file coding tasks that run inside Gemini CLI's own tool and eval pipeline. Tasks where you need to read 5-10 files, trace dependencies, and produce a coordinated fix. That's what this project builds - 30-50 tasks mined from real OSS pull requests, integrated with the existing `TestRig` and `evalTest()` infrastructure.
 
 ## Quick Start
 
@@ -36,9 +36,9 @@ Ran 3 L2 tasks against the Gemini REST API (March 2026):
 
 Some observations from these runs:
 
-- **All 4 models got the Express task right** — it had full context (3/3 files readable) and a clear bug description. Straightforward L2 task.
+- **All 4 models got the Express task right** - it had full context (3/3 files readable) and a clear bug description. Straightforward L2 task.
 - **Flash outperformed Pro models on file identification.** Pro responses are more verbose and describe changes abstractly rather than naming file paths, which our parser misses. This points to a real challenge in eval design: how you parse model output matters as much as what the model says.
-- **The FastAPI task was hard for everyone.** 2 of its 4 context files don't exist at the pinned SHA (they were created by the PR itself). All Pro models scored 0%. This is the kind of task design subtlety the dataset is built to catch — tasks where pre-PR state doesn't contain the test files need different verification strategies.
+- **The FastAPI task was hard for everyone.** 2 of its 4 context files don't exist at the pinned SHA (they were created by the PR itself). All Pro models scored 0%. This is the kind of task design subtlety the dataset is built to catch - tasks where pre-PR state doesn't contain the test files need different verification strategies.
 
 ## What's in This POC
 
@@ -48,7 +48,7 @@ schema/
   sample-tasks/                    # 8 real tasks mined from OSS repos
 
 runner/
-  coding-task-runner.ts            # CodingTaskRunner — clones repos, runs agent, verifies
+  coding-task-runner.ts            # CodingTaskRunner - clones repos, runs agent, verifies
   metrics.ts                       # RFS, PES, CCS, TER metric implementations
   failure-taxonomy.ts              # 7-mode failure classification
   run-eval.ts                      # CLI entry point (dry-run and live modes)
@@ -129,7 +129,7 @@ const result = await runner.run();
 
 This dataset integrates with Gemini CLI's **existing** eval infrastructure:
 
-- Tasks defined as `CodingTaskManifest` JSON files — extending the [`EvalCase`](https://github.com/google-gemini/gemini-cli/blob/main/evals/test-helper.ts#L199-L207) interface pattern
+- Tasks defined as `CodingTaskManifest` JSON files - extending the [`EvalCase`](https://github.com/google-gemini/gemini-cli/blob/main/evals/test-helper.ts#L199-L207) interface pattern
 - Runner wraps [`TestRig`](https://github.com/google-gemini/gemini-cli/blob/main/packages/test-utils/src/test-rig.ts) for execution, tool call logging, and cleanup
 - Results feed into the existing [`aggregate_evals.js`](https://github.com/google-gemini/gemini-cli/blob/main/scripts/aggregate_evals.js) aggregation pattern
 - Eval policies (`ALWAYS_PASSES` / `USUALLY_PASSES`) map to difficulty levels
