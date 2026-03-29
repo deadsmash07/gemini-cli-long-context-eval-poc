@@ -12,6 +12,8 @@
     "eval:live": "npx tsx runner/run-eval.ts --live",
     "eval:api": "npx tsx runner/api-eval.ts",
     "eval:api:pro": "npx tsx runner/api-eval.ts --model gemini-2.5-pro",
+    "eval:challenge": "npx tsx runner/challenge-eval.ts",
+    "eval:challenge:pro": "npx tsx runner/challenge-eval.ts --model gemini-2.5-pro",
     "stats": "npx tsx runner/stats.ts",
     "demo": "npm run validate && echo '--- All tasks valid ---' && npx tsx runner/stats.ts"
   },

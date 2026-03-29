@@ -8,6 +8,22 @@ The PR-mined tasks (Tier 1) are ecologically valid but mostly L2-L3 difficulty. 
 
 Zero contamination risk - these are original tasks, not derived from public repositories.
 
+## Evaluation Results (Modal Cloud, March 2026)
+
+Ran all 7 tasks on Modal cloud VMs with Gemini 2.5 Flash:
+
+| Task | Difficulty | Tests Passed | Status |
+|------|-----------|-------------|--------|
+| build-queue-coordinator | Medium | 0/1 (collection error) | FAIL |
+| ci-pipeline-scheduler | Hard | 0/1 (collection error) | FAIL |
+| cicd-secrets-leak-scanner | Hard | 2/30 (6%) | PARTIAL |
+| compose-guard | Hard | 0/6 (0%) | FAIL |
+| container-image-security-audit | Hard | 0/26 (0%) | FAIL |
+| cron-guard | Hard | 1/10 (10%) | PARTIAL |
+| git-hook-generator | Medium | 0/31 (0%) | FAIL |
+
+**0 out of 7 tasks fully solved.** The best result was cicd-secrets-leak-scanner at 6% (2 of 30 tests). These tasks require multi-step reasoning, careful specification reading, and coordinated implementation across modules that single-turn LLM generation cannot handle.
+
 ## Tasks
 
 | Task | Difficulty | Category | Tests | Description |
