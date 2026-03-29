@@ -304,7 +304,8 @@ def main(model: str = "gemini-2.5-flash", task: str = ""):
     # Save results
     output_dir = Path(__file__).parent.parent / "results"
     output_dir.mkdir(exist_ok=True)
-    output_path = output_dir / "challenge-eval-modal-results.json"
+    safe_model = model.replace("/", "-").replace(".", "-")
+    output_path = output_dir / f"challenge-eval-modal-{safe_model}.json"
     output_path.write_text(json.dumps({
         "model": model,
         "runtime": "modal",

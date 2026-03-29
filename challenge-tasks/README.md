@@ -10,19 +10,21 @@ Zero contamination risk - these are original tasks, not derived from public repo
 
 ## Evaluation Results (Modal Cloud, March 2026)
 
-Ran all 7 tasks on Modal cloud VMs with Gemini 2.5 Flash:
+Ran all 7 tasks on Modal cloud VMs across 3 Gemini models:
 
-| Task | Difficulty | Tests Passed | Status |
-|------|-----------|-------------|--------|
-| build-queue-coordinator | Medium | 0/1 (collection error) | FAIL |
-| ci-pipeline-scheduler | Hard | 0/1 (collection error) | FAIL |
-| cicd-secrets-leak-scanner | Hard | 2/30 (6%) | PARTIAL |
-| compose-guard | Hard | 0/6 (0%) | FAIL |
-| container-image-security-audit | Hard | 0/26 (0%) | FAIL |
-| cron-guard | Hard | 1/10 (10%) | PARTIAL |
-| git-hook-generator | Medium | 0/31 (0%) | FAIL |
+| Task | Difficulty | 2.5-flash | 3-pro | 3.1-pro |
+|------|-----------|-----------|-------|---------|
+| build-queue-coordinator | Medium | 0/1 (err) | timeout | timeout |
+| ci-pipeline-scheduler | Hard | 0/1 (err) | timeout | timeout |
+| cicd-secrets-leak-scanner | Hard | 1/30 (3%) | timeout | timeout |
+| compose-guard | Hard | 0/6 (0%) | timeout | timeout |
+| container-image-security-audit | Hard | 0/26 (0%) | timeout | timeout |
+| cron-guard | Hard | 1/10 (10%) | timeout | timeout |
+| git-hook-generator | Medium | 0/31 (0%) | 1/31 (3%) | 1/31 (3%) |
 
-**0 out of 7 tasks fully solved.** The best result was cicd-secrets-leak-scanner at 6% (2 of 30 tests). These tasks require multi-step reasoning, careful specification reading, and coordinated implementation across modules that single-turn LLM generation cannot handle.
+**0 out of 7 tasks fully solved by any model.** Flash completed all 7 tasks (best: cron-guard at 10%). Pro models timed out on 6/7 tasks due to slower generation. On the one task Pro finished (git-hook-generator), both 3-pro and 3.1-pro passed 1 test vs Flash's 0 - suggesting Pro may reason better given enough time but at much higher latency.
+
+These tasks require multi-step reasoning, careful specification reading, and coordinated implementation across modules that single-turn LLM generation cannot handle.
 
 ## Tasks
 
