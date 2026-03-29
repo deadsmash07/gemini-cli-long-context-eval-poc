@@ -30,7 +30,7 @@ DIFFICULTY_THRESHOLDS = {
     (11, 999): 4, # L4: expert, architectural
 }
 
-TOKENS_PER_LINE = 100  # rough approximation for BPE tokenizers
+TOKENS_PER_LINE = 15  # ~40-60 chars/line → ~10-20 BPE tokens; 15 is conservative
 
 
 def get_session(token: str | None) -> requests.Session:

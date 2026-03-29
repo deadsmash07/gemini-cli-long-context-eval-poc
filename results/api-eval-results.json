@@ -1,0 +1,83 @@
+{
+  "model": "gemini-2.5-flash",
+  "timestamp": "2026-03-29T08:21:28.093Z",
+  "results": [
+    {
+      "taskId": "task-001-fastapi-swagger-ui-escaping",
+      "model": "gemini-2.5-flash",
+      "durationMs": 34007,
+      "filesIdentified": [
+        "fastapi/openapi/docs.py"
+      ],
+      "filesExpected": [
+        "fastapi/applications.py",
+        "fastapi/openapi/docs.py",
+        "tests/test_openapi_cache_root_path.py",
+        "tests/test_swagger_ui_escape.py"
+      ],
+      "filesCorrect": [
+        "fastapi/openapi/docs.py"
+      ],
+      "filesMissed": [
+        "fastapi/applications.py",
+        "tests/test_openapi_cache_root_path.py",
+        "tests/test_swagger_ui_escape.py"
+      ],
+      "accuracy": 0.25,
+      "rfs": 2,
+      "responseTokens": 10509,
+      "reasoning": "FILES TO MODIFY: fastapi/openapi/utils.py, fastapi/openapi/docs.py, tests/test_openapi_servers.py, tests/test_openapi_docs_security.py\n\n## Reasoning and Changes\n\n### 1. Remove `root_path` from OpenAPI `servers` array\n\n**Reasoning:**\nThe prompt states that the `root_path` should not be stored in the `servers` array in the OpenAPI schema to prevent potential proxy misconfiguration attacks via `x-forwarded-*` headers. The `get_openapi` function is responsible for generating the OpenAPI schema. Whil"
+    },
+    {
+      "taskId": "task-002-express-render-null-options",
+      "model": "gemini-2.5-flash",
+      "durationMs": 26041,
+      "filesIdentified": [
+        "lib/application.js",
+        "test/app.render.js",
+        "History.md"
+      ],
+      "filesExpected": [
+        "lib/application.js",
+        "test/app.render.js"
+      ],
+      "filesCorrect": [
+        "lib/application.js",
+        "test/app.render.js"
+      ],
+      "filesMissed": [],
+      "accuracy": 1,
+      "rfs": 5,
+      "responseTokens": 10247,
+      "reasoning": "FILES TO MODIFY: lib/application.js, test/app.render.js\n\n### Reasoning for the fix\n\nThe problem describes a regression in Express v5.1 where `app.render(view, null, callback)` or `app.render(view, undefined, callback)` throws a `TypeError`. This is attributed to a \"spread merge for options\" being introduced without guarding against `null`/`undefined` values.\n\nLooking at the `History.md`, Express 5.1.0 includes \"deps: remove `utils-merge`\". In previous versions (e.g., Express 4.x), `utils-merge` "
+    },
+    {
+      "taskId": "task-004-flask-trusted-hosts-config",
+      "model": "gemini-2.5-flash",
+      "durationMs": 33448,
+      "filesIdentified": [
+        "src/flask/app.py",
+        "docs/config.rst",
+        "tests/test_request.py",
+        "CHANGES.rst"
+      ],
+      "filesExpected": [
+        "src/flask/app.py",
+        "docs/config.rst",
+        "tests/test_request.py",
+        "CHANGES.rst"
+      ],
+      "filesCorrect": [
+        "src/flask/app.py",
+        "docs/config.rst",
+        "tests/test_request.py",
+        "CHANGES.rst"
+      ],
+      "filesMissed": [],
+      "accuracy": 1,
+      "rfs": 2,
+      "responseTokens": 12292,
+      "reasoning": "FILES TO MODIFY: src/flask/app.py, docs/config.rst, tests/test_request.py, CHANGES.rst\n\n### Reasoning for Changes\n\n1.  **`src/flask/app.py`**:\n    *   **Add `TRUSTED_HOSTS` to default configuration**: The `Flask` class initializes its `config` attribute with a set of default values. `TRUSTED_HOSTS` needs to be added here with a default of `None` (meaning no host validation by default).\n    *   **Implement host validation in `create_url_adapter`**: The `create_url_adapter` method is called when a"
+    }
+  ]
+}

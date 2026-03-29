@@ -12,13 +12,16 @@ What's missing is something in between: real multi-file coding tasks that run in
 
 ```bash
 npm install
-npm run demo        # Validate all tasks + print dataset stats
+npm run demo        # ← works out of the box (validate + stats)
 npm run eval        # Dry-run eval (validates setup, computes static metrics)
-npm run eval:live   # Run evals against real Gemini CLI (requires gemini binary)
-npm run eval:api    # Run evals via Gemini REST API (needs GEMINI_API_KEY in .env)
 npm run stats       # Print dataset summary table
-npm run validate    # Validate task manifests against schema
+npm run validate    # Validate task manifests (needs python3 + jsonschema)
+npm run eval:api    # Run evals via Gemini API (needs GEMINI_API_KEY in .env)
+npm run eval:live   # Run evals against real Gemini CLI (needs gemini binary)
+npm run mine        # Mine tasks from GitHub (needs GITHUB_TOKEN + requests)
 ```
+
+`npm run demo` and `npm run eval` work with just Node.js. The other commands need external dependencies as noted.
 
 ## Live Evaluation Results
 
