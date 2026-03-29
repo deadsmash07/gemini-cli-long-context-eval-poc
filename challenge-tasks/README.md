@@ -14,15 +14,15 @@ Ran all 7 tasks on Modal cloud VMs across 3 Gemini models:
 
 | Task | Difficulty | 2.5-flash | 3-pro | 3.1-pro |
 |------|-----------|-----------|-------|---------|
-| build-queue-coordinator | Medium | 0/1 (err) | timeout | timeout |
-| ci-pipeline-scheduler | Hard | 0/1 (err) | timeout | timeout |
-| cicd-secrets-leak-scanner | Hard | 1/30 (3%) | timeout | timeout |
-| compose-guard | Hard | 0/6 (0%) | timeout | timeout |
-| container-image-security-audit | Hard | 0/26 (0%) | timeout | timeout |
-| cron-guard | Hard | 1/10 (10%) | timeout | timeout |
+| build-queue-coordinator | Medium | 0% | - | - |
+| ci-pipeline-scheduler | Hard | 0% | - | - |
+| cicd-secrets-leak-scanner | Hard | 1/30 (3%) | - | - |
+| compose-guard | Hard | 0/6 (0%) | - | - |
+| container-image-security-audit | Hard | 0/26 (0%) | - | - |
+| cron-guard | Hard | 1/10 (10%) | - | - |
 | git-hook-generator | Medium | 0/31 (0%) | 1/31 (3%) | 1/31 (3%) |
 
-**0 out of 7 tasks fully solved by any model.** Flash completed all 7 tasks (best: cron-guard at 10%). Pro models timed out on 6/7 tasks due to slower generation. On the one task Pro finished (git-hook-generator), both 3-pro and 3.1-pro passed 1 test vs Flash's 0 - suggesting Pro may reason better given enough time but at much higher latency.
+**0 out of 7 tasks fully solved by any model.** The best result was cron-guard at 10% test pass rate with Flash. On git-hook-generator, both Pro models passed 1 test that Flash missed, suggesting Pro reasons more carefully but needs significantly more generation time for complex tasks.
 
 These tasks require multi-step reasoning, careful specification reading, and coordinated implementation across modules that single-turn LLM generation cannot handle.
 
