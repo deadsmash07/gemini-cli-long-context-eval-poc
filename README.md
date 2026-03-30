@@ -61,7 +61,7 @@ Automated mining gives ecological validity. Hand-crafted tasks give difficulty c
 ```
 schema/
   task-manifest.schema.json          # JSON Schema for task manifests
-  sample-tasks/                      # 8 PR-mined tasks (Tier 1)
+  sample-tasks/                      # 11 PR-mined tasks (Tier 1)
 
 challenge-tasks/                     # 7 Docker-containerized tasks (Tier 2)
   build-queue-coordinator/           #   build queue with preemption + deps (medium)
