@@ -45,12 +45,14 @@ npm run stats         # dataset summary table
 | | Tier 1: PR-mined | Tier 2: Challenge |
 |---|---|---|
 | Source | Real merged pull requests | Expert-designed challenges |
-| Count | 8 tasks (target: 30-50) | 7 tasks |
+| Count | 11 tasks across 7 repos | 7 tasks |
 | Difficulty | L2-L3 | L3-L4 |
 | Languages | Python, JS, TS, Rust | Python |
-| Verification | Repo test suite | Docker + pytest |
+| Repos | FastAPI, Express, Flask, Astro, Deno, Ruff, **gemini-cli** | Self-contained |
+| Verification | Repo test suite + gold patches | Docker + pytest |
 | Contamination | SHA-pinned, post-cutoff | Zero (original tasks) |
 | Test code | Varies | ~2,700 lines |
+| Gold patches | 11/11 | N/A |
 
 Automated mining gives ecological validity. Hand-crafted tasks give difficulty control and zero contamination risk.
 
