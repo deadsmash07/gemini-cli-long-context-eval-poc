@@ -1,0 +1,42 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-011-gemini-cli-tab-to-queue",
+  "repo": "https://github.com/google-gemini/gemini-cli",
+  "source_pr": "https://github.com/google-gemini/gemini-cli/pull/24052",
+  "pr_title": "feat(cli): support 'tab to queue' for messages while generating",
+  "commit_sha": "afc1d50c20fb4ca04837d42f6ed59fb7f0b201b5",
+  "language": ["typescript"],
+  "difficulty": 3,
+  "context_files": [
+    "packages/cli/src/ui/components/Composer.tsx",
+    "packages/cli/src/ui/components/InputPrompt.tsx",
+    "packages/cli/src/ui/AppContainer.tsx",
+    "packages/cli/src/ui/contexts/UIActionsContext.tsx",
+    "packages/cli/src/ui/key/keyBindings.ts",
+    "packages/cli/src/test-utils/render.tsx",
+    "packages/cli/src/ui/components/InputPrompt.test.tsx",
+    "docs/reference/keyboard-shortcuts.md"
+  ],
+  "context_tokens_estimate": 18000,
+  "prompt": "Implement a 'tab to queue' feature in the Gemini CLI terminal UI. When the agent is currently generating a response, the user should be able to press Tab to switch to a text input mode where they can type their next message. This queued message should be sent automatically once the current generation completes. The implementation requires changes across the UI component tree: the Composer component needs to handle the tab key binding, the InputPrompt needs a new queued state, the AppContainer needs to manage the queued message lifecycle, and the UIActionsContext needs to expose the queue functionality. Update the keyboard shortcuts documentation and add tests for the new InputPrompt behavior.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "npx vitest run packages/cli/src/ui/components/InputPrompt.test.tsx",
+    "expected_files_changed": [
+      "packages/cli/src/ui/components/Composer.tsx",
+      "packages/cli/src/ui/components/InputPrompt.tsx",
+      "packages/cli/src/ui/AppContainer.tsx",
+      "packages/cli/src/ui/contexts/UIActionsContext.tsx",
+      "packages/cli/src/ui/key/keyBindings.ts",
+      "packages/cli/src/test-utils/render.tsx",
+      "packages/cli/src/ui/components/InputPrompt.test.tsx",
+      "docs/reference/keyboard-shortcuts.md"
+    ],
+    "reference_diff": "patches/task-011.patch"
+  },
+  "metadata": {
+    "tags": ["feature", "ui", "keyboard", "message-queue", "gemini-cli"],
+    "mined_from": "PR #24052",
+    "created_at": "2026-03-31"
+  }
+}

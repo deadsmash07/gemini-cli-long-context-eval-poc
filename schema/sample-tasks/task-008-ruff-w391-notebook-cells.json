@@ -5,7 +5,9 @@
   "source_pr": "https://github.com/astral-sh/ruff/pull/24236",
   "pr_title": "Fix W391 fixes for consecutive empty notebook cells",
   "commit_sha": "627e2a04269400ea88f65e64797666ad32604204",
-  "language": ["rust"],
+  "language": [
+    "rust"
+  ],
   "difficulty": 3,
   "context_files": [
     "crates/ruff_linter/src/rules/pycodestyle/rules/too_many_newlines_at_end_of_file.rs",
@@ -28,10 +30,16 @@
       "crates/ruff_notebook/src/cell.rs",
       "crates/ruff_notebook/src/notebook.rs",
       "crates/ruff_notebook/src/lib.rs"
-    ]
+    ],
+    "reference_diff": "patches/task-008.patch"
   },
   "metadata": {
-    "tags": ["bug-fix", "panic-fix", "jupyter-notebook", "per-cell-diagnostics"],
+    "tags": [
+      "bug-fix",
+      "panic-fix",
+      "jupyter-notebook",
+      "per-cell-diagnostics"
+    ],
     "mined_from": "PR #24236",
     "created_at": "2026-03-29"
   }

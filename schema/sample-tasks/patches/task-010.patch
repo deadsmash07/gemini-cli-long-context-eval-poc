@@ -1,0 +1,687 @@
+diff --git a/docs/reference/configuration.md b/docs/reference/configuration.md
+index 786691882c9..eef73a700c4 100644
+--- a/docs/reference/configuration.md
++++ b/docs/reference/configuration.md
+@@ -1287,6 +1287,18 @@ their corresponding top-level category object in your `settings.json` file.
+   - **Description:** Maximum number of directories to search for memory.
+   - **Default:** `200`
+ 
++- **`context.memoryBoundaryMarkers`** (array):
++  - **Description:** File or directory names that mark the boundary for
++    GEMINI.md discovery. The upward traversal stops at the first directory
++    containing any of these markers. An empty array disables parent traversal.
++  - **Default:**
++
++    ```json
++    [".git"]
++    ```
++
++  - **Requires restart:** Yes
++
+ - **`context.includeDirectories`** (array):
+   - **Description:** Additional directories to include in the workspace context.
+     Missing directories will be skipped with a warning.
+diff --git a/packages/cli/src/config/config.test.ts b/packages/cli/src/config/config.test.ts
+index 0d9fb8a9a0e..0723a1d3206 100644
+--- a/packages/cli/src/config/config.test.ts
++++ b/packages/cli/src/config/config.test.ts
+@@ -989,6 +989,7 @@ describe('Hierarchical Memory Loading (config.ts) - Placeholder Suite', () => {
+         respectGeminiIgnore: true,
+       }),
+       200, // maxDirs
++      ['.git'], // boundaryMarkers
+     );
+   });
+ 
+@@ -1018,6 +1019,7 @@ describe('Hierarchical Memory Loading (config.ts) - Placeholder Suite', () => {
+         respectGeminiIgnore: true,
+       }),
+       200,
++      ['.git'], // boundaryMarkers
+     );
+   });
+ 
+@@ -1046,6 +1048,7 @@ describe('Hierarchical Memory Loading (config.ts) - Placeholder Suite', () => {
+         respectGeminiIgnore: true,
+       }),
+       200,
++      ['.git'], // boundaryMarkers
+     );
+   });
+ });
+diff --git a/packages/cli/src/config/config.ts b/packages/cli/src/config/config.ts
+index ec14eced758..b89dde6bc3a 100755
+--- a/packages/cli/src/config/config.ts
++++ b/packages/cli/src/config/config.ts
+@@ -642,6 +642,7 @@ export async function loadCliConfig(
+       memoryImportFormat,
+       memoryFileFiltering,
+       settings.context?.discoveryMaxDirs,
++      settings.context?.memoryBoundaryMarkers,
+     );
+     memoryContent = result.memoryContent;
+     fileCount = result.fileCount;
+@@ -896,6 +897,7 @@ export async function loadCliConfig(
+     loadMemoryFromIncludeDirectories:
+       settings.context?.loadMemoryFromIncludeDirectories || false,
+     discoveryMaxDirs: settings.context?.discoveryMaxDirs,
++    memoryBoundaryMarkers: settings.context?.memoryBoundaryMarkers,
+     importFormat: settings.context?.importFormat,
+     debugMode,
+     question,
+diff --git a/packages/cli/src/config/extension-manager-themes.spec.ts b/packages/cli/src/config/extension-manager-themes.spec.ts
+index 9358784a2f0..fa5fec5bc34 100644
+--- a/packages/cli/src/config/extension-manager-themes.spec.ts
++++ b/packages/cli/src/config/extension-manager-themes.spec.ts
+@@ -199,6 +199,7 @@ describe('ExtensionManager theme loading', () => {
+         respectGeminiIgnore: true,
+       }),
+       getDiscoveryMaxDirs: () => 200,
++      getMemoryBoundaryMarkers: () => ['.git'],
+       getMcpClientManager: () => ({
+         getMcpInstructions: () => '',
+         startExtension: vi.fn().mockResolvedValue(undefined),
+diff --git a/packages/cli/src/config/settingsSchema.ts b/packages/cli/src/config/settingsSchema.ts
+index db38cf598cc..e205b15eddd 100644
+--- a/packages/cli/src/config/settingsSchema.ts
++++ b/packages/cli/src/config/settingsSchema.ts
+@@ -1291,6 +1291,19 @@ const SETTINGS_SCHEMA = {
+         description: 'Maximum number of directories to search for memory.',
+         showInDialog: true,
+       },
++      memoryBoundaryMarkers: {
++        type: 'array',
++        label: 'Memory Boundary Markers',
++        category: 'Context',
++        requiresRestart: true,
++        default: ['.git'] as string[],
++        description:
++          'File or directory names that mark the boundary for GEMINI.md discovery. ' +
++          'The upward traversal stops at the first directory containing any of these markers. ' +
++          'An empty array disables parent traversal.',
++        showInDialog: false,
++        items: { type: 'string' },
++      },
+       includeDirectories: {
+         type: 'array',
+         label: 'Include Directories',
+diff --git a/packages/cli/src/test-utils/mockConfig.ts b/packages/cli/src/test-utils/mockConfig.ts
+index e1505df9703..260bafdf2bf 100644
+--- a/packages/cli/src/test-utils/mockConfig.ts
++++ b/packages/cli/src/test-utils/mockConfig.ts
+@@ -163,6 +163,7 @@ export const createMockConfig = (overrides: Partial<Config> = {}): Config =>
+     getAdminSkillsEnabled: vi.fn().mockReturnValue(false),
+     getDisabledSkills: vi.fn().mockReturnValue([]),
+     getExperimentalJitContext: vi.fn().mockReturnValue(false),
++    getMemoryBoundaryMarkers: vi.fn().mockReturnValue(['.git']),
+     getTerminalBackground: vi.fn().mockReturnValue(undefined),
+     getEmbeddingModel: vi.fn().mockReturnValue('embedding-model'),
+     getQuotaErrorOccurred: vi.fn().mockReturnValue(false),
+diff --git a/packages/core/src/config/config.ts b/packages/core/src/config/config.ts
+index 69ffc2c507c..4604b1ecbc3 100644
+--- a/packages/core/src/config/config.ts
++++ b/packages/core/src/config/config.ts
+@@ -685,6 +685,7 @@ export interface ConfigParameters {
+   experimentalAgentHistoryTruncationThreshold?: number;
+   experimentalAgentHistoryRetainedMessages?: number;
+   experimentalAgentHistorySummarization?: boolean;
++  memoryBoundaryMarkers?: string[];
+   topicUpdateNarration?: boolean;
+   toolOutputMasking?: Partial<ToolOutputMaskingConfig>;
+   disableLLMCorrection?: boolean;
+@@ -917,6 +918,7 @@ export class Config implements McpContext, AgentLoopContext {
+   private readonly experimentalAgentHistoryTruncationThreshold: number;
+   private readonly experimentalAgentHistoryRetainedMessages: number;
+   private readonly experimentalAgentHistorySummarization: boolean;
++  private readonly memoryBoundaryMarkers: readonly string[];
+   private readonly topicUpdateNarration: boolean;
+   private readonly disableLLMCorrection: boolean;
+   private readonly planEnabled: boolean;
+@@ -1134,6 +1136,7 @@ export class Config implements McpContext, AgentLoopContext {
+       params.experimentalAgentHistoryRetainedMessages ?? 15;
+     this.experimentalAgentHistorySummarization =
+       params.experimentalAgentHistorySummarization ?? false;
++    this.memoryBoundaryMarkers = params.memoryBoundaryMarkers ?? ['.git'];
+     this.topicUpdateNarration = params.topicUpdateNarration ?? false;
+     this.modelSteering = params.modelSteering ?? false;
+     this.injectionService = new InjectionService(() =>
+@@ -2310,6 +2313,10 @@ export class Config implements McpContext, AgentLoopContext {
+     return this.experimentalJitContext;
+   }
+ 
++  getMemoryBoundaryMarkers(): readonly string[] {
++    return this.memoryBoundaryMarkers;
++  }
++
+   isMemoryManagerEnabled(): boolean {
+     return this.experimentalMemoryManager;
+   }
+diff --git a/packages/core/src/services/contextManager.test.ts b/packages/core/src/services/contextManager.test.ts
+index 1d078fd8fb8..a6a3c8cd0f0 100644
+--- a/packages/core/src/services/contextManager.test.ts
++++ b/packages/core/src/services/contextManager.test.ts
+@@ -46,6 +46,7 @@ describe('ContextManager', () => {
+         getMcpInstructions: vi.fn().mockReturnValue('MCP Instructions'),
+       }),
+       isTrustedFolder: vi.fn().mockReturnValue(true),
++      getMemoryBoundaryMarkers: vi.fn().mockReturnValue(['.git']),
+     } as unknown as Config;
+ 
+     contextManager = new ContextManager(mockConfig);
+@@ -81,12 +82,14 @@ describe('ContextManager', () => {
+       await contextManager.refresh();
+ 
+       expect(memoryDiscovery.getGlobalMemoryPaths).toHaveBeenCalled();
+-      expect(memoryDiscovery.getEnvironmentMemoryPaths).toHaveBeenCalledWith([
+-        '/app',
+-      ]);
++      expect(memoryDiscovery.getEnvironmentMemoryPaths).toHaveBeenCalledWith(
++        ['/app'],
++        ['.git'],
++      );
+       expect(memoryDiscovery.readGeminiMdFiles).toHaveBeenCalledWith(
+         expect.arrayContaining([...globalPaths, ...envPaths]),
+         'tree',
++        ['.git'],
+       );
+ 
+       expect(contextManager.getGlobalMemory()).toContain('Global Content');
+@@ -172,6 +175,7 @@ describe('ContextManager', () => {
+       expect(memoryDiscovery.readGeminiMdFiles).toHaveBeenCalledWith(
+         ['/home/user/.gemini/GEMINI.md', '/app/gemini.md'],
+         'tree',
++        ['.git'],
+       );
+       expect(contextManager.getEnvironmentMemory()).toContain(
+         'Project Content',
+@@ -197,6 +201,7 @@ describe('ContextManager', () => {
+         ['/app'],
+         expect.any(Set),
+         expect.any(Set),
++        ['.git'],
+       );
+       expect(result).toMatch(/--- Context from: \/app\/src\/GEMINI\.md ---/);
+       expect(result).toContain('Src Content');
+@@ -226,5 +231,25 @@ describe('ContextManager', () => {
+       expect(memoryDiscovery.loadJitSubdirectoryMemory).not.toHaveBeenCalled();
+       expect(result).toBe('');
+     });
++
++    it('should pass custom boundary markers from config', async () => {
++      const customMarkers = ['.monorepo-root', 'package.json'];
++      vi.mocked(mockConfig.getMemoryBoundaryMarkers).mockReturnValue(
++        customMarkers,
++      );
++      vi.mocked(memoryDiscovery.loadJitSubdirectoryMemory).mockResolvedValue({
++        files: [],
++      });
++
++      await contextManager.discoverContext('/app/src/file.ts', ['/app']);
++
++      expect(memoryDiscovery.loadJitSubdirectoryMemory).toHaveBeenCalledWith(
++        '/app/src/file.ts',
++        ['/app'],
++        expect.any(Set),
++        expect.any(Set),
++        customMarkers,
++      );
++    });
+   });
+ });
+diff --git a/packages/core/src/services/contextManager.ts b/packages/core/src/services/contextManager.ts
+index b9da286e9c0..3d7400c747e 100644
+--- a/packages/core/src/services/contextManager.ts
++++ b/packages/core/src/services/contextManager.ts
+@@ -51,9 +51,10 @@ export class ContextManager {
+         getExtensionMemoryPaths(this.config.getExtensionLoader()),
+       ),
+       this.config.isTrustedFolder()
+-        ? getEnvironmentMemoryPaths([
+-            ...this.config.getWorkspaceContext().getDirectories(),
+-          ])
++        ? getEnvironmentMemoryPaths(
++            [...this.config.getWorkspaceContext().getDirectories()],
++            this.config.getMemoryBoundaryMarkers(),
++          )
+         : Promise.resolve([]),
+     ]);
+ 
+@@ -76,6 +77,7 @@ export class ContextManager {
+     const allContents = await readGeminiMdFiles(
+       allPaths,
+       this.config.getImportFormat(),
++      this.config.getMemoryBoundaryMarkers(),
+     );
+ 
+     const loadedFilePaths = allContents
+@@ -133,6 +135,7 @@ export class ContextManager {
+       trustedRoots,
+       this.loadedPaths,
+       this.loadedFileIdentities,
++      this.config.getMemoryBoundaryMarkers(),
+     );
+ 
+     if (result.files.length === 0) {
+diff --git a/packages/core/src/utils/memoryDiscovery.test.ts b/packages/core/src/utils/memoryDiscovery.test.ts
+index 8ec6909b415..9e18a41f660 100644
+--- a/packages/core/src/utils/memoryDiscovery.test.ts
++++ b/packages/core/src/utils/memoryDiscovery.test.ts
+@@ -1269,6 +1269,96 @@ included directory memory
+       expect(result.files[0].path).toBe(subDirMemory);
+       expect(result.files[0].content).toBe('Content without git');
+     });
++
++    it('should stop at a custom boundary marker instead of .git', async () => {
++      const rootDir = await createEmptyDir(
++        path.join(testRootDir, 'custom_marker'),
++      );
++      // Use a custom marker file instead of .git
++      await createTestFile(path.join(rootDir, '.monorepo-root'), '');
++      const subDir = await createEmptyDir(path.join(rootDir, 'packages/app'));
++      const targetFile = path.join(subDir, 'file.ts');
++
++      const rootMemory = await createTestFile(
++        path.join(rootDir, DEFAULT_CONTEXT_FILENAME),
++        'Root rules',
++      );
++      const subDirMemory = await createTestFile(
++        path.join(subDir, DEFAULT_CONTEXT_FILENAME),
++        'App rules',
++      );
++
++      const result = await loadJitSubdirectoryMemory(
++        targetFile,
++        [rootDir],
++        new Set(),
++        undefined,
++        ['.monorepo-root'],
++      );
++
++      expect(result.files).toHaveLength(2);
++      expect(result.files.find((f) => f.path === rootMemory)).toBeDefined();
++      expect(result.files.find((f) => f.path === subDirMemory)).toBeDefined();
++    });
++
++    it('should support multiple boundary markers', async () => {
++      const rootDir = await createEmptyDir(
++        path.join(testRootDir, 'multi_marker'),
++      );
++      // Use a non-.git marker
++      await createTestFile(path.join(rootDir, 'package.json'), '{}');
++      const subDir = await createEmptyDir(path.join(rootDir, 'src'));
++      const targetFile = path.join(subDir, 'index.ts');
++
++      const rootMemory = await createTestFile(
++        path.join(rootDir, DEFAULT_CONTEXT_FILENAME),
++        'Root content',
++      );
++
++      const result = await loadJitSubdirectoryMemory(
++        targetFile,
++        [rootDir],
++        new Set(),
++        undefined,
++        ['.git', 'package.json'],
++      );
++
++      // Should find the root because package.json is a marker
++      expect(result.files).toHaveLength(1);
++      expect(result.files[0].path).toBe(rootMemory);
++    });
++
++    it('should disable parent traversal when boundary markers array is empty', async () => {
++      const rootDir = await createEmptyDir(
++        path.join(testRootDir, 'empty_markers'),
++      );
++      await createEmptyDir(path.join(rootDir, '.git'));
++      const subDir = await createEmptyDir(path.join(rootDir, 'subdir'));
++      const targetFile = path.join(subDir, 'target.txt');
++
++      await createTestFile(
++        path.join(rootDir, DEFAULT_CONTEXT_FILENAME),
++        'Root content',
++      );
++      const subDirMemory = await createTestFile(
++        path.join(subDir, DEFAULT_CONTEXT_FILENAME),
++        'Subdir content',
++      );
++
++      const result = await loadJitSubdirectoryMemory(
++        targetFile,
++        [rootDir],
++        new Set(),
++        undefined,
++        [],
++      );
++
++      // With empty markers, no project root is found so the trusted root
++      // is used as the ceiling. Traversal still finds files between the
++      // target path and the trusted root.
++      expect(result.files).toHaveLength(2);
++      expect(result.files.find((f) => f.path === subDirMemory)).toBeDefined();
++    });
+   });
+ 
+   it('refreshServerHierarchicalMemory should refresh memory and update config', async () => {
+@@ -1341,6 +1431,7 @@ included directory memory
+       getImportFormat: vi.fn().mockReturnValue('tree'),
+       getFileFilteringOptions: vi.fn().mockReturnValue(undefined),
+       getDiscoveryMaxDirs: vi.fn().mockReturnValue(200),
++      getMemoryBoundaryMarkers: vi.fn().mockReturnValue(['.git']),
+       setUserMemory: vi.fn(),
+       setGeminiMdFileCount: vi.fn(),
+       setGeminiMdFilePaths: vi.fn(),
+diff --git a/packages/core/src/utils/memoryDiscovery.ts b/packages/core/src/utils/memoryDiscovery.ts
+index 21b87330a14..01b9f9fb5a7 100644
+--- a/packages/core/src/utils/memoryDiscovery.ts
++++ b/packages/core/src/utils/memoryDiscovery.ts
+@@ -146,41 +146,54 @@ export async function deduplicatePathsByFileIdentity(
+   };
+ }
+ 
+-async function findProjectRoot(startDir: string): Promise<string | null> {
++async function findProjectRoot(
++  startDir: string,
++  boundaryMarkers: readonly string[] = ['.git'],
++): Promise<string | null> {
++  if (boundaryMarkers.length === 0) {
++    return null;
++  }
++
+   let currentDir = normalizePath(startDir);
+   while (true) {
+-    const gitPath = path.join(currentDir, '.git');
+-    try {
+-      // Check for existence only — .git can be a directory (normal repos)
+-      // or a file (submodules / worktrees).
+-      await fs.access(gitPath);
+-      return currentDir;
+-    } catch (error: unknown) {
+-      // Don't log ENOENT errors as they're expected when .git doesn't exist
+-      // Also don't log errors in test environments, which often have mocked fs
+-      const isENOENT =
+-        typeof error === 'object' &&
+-        error !== null &&
+-        'code' in error &&
+-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+-        (error as { code: string }).code === 'ENOENT';
++    for (const marker of boundaryMarkers) {
++      // Sanitize: skip markers with path traversal or absolute paths
++      if (path.isAbsolute(marker) || marker.includes('..')) {
++        continue;
++      }
++      const markerPath = path.join(currentDir, marker);
++      try {
++        // Check for existence only — marker can be a directory (normal repos)
++        // or a file (submodules / worktrees).
++        await fs.access(markerPath);
++        return currentDir;
++      } catch (error: unknown) {
++        // Don't log ENOENT errors as they're expected when marker doesn't exist
++        // Also don't log errors in test environments, which often have mocked fs
++        const isENOENT =
++          typeof error === 'object' &&
++          error !== null &&
++          'code' in error &&
++          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
++          (error as { code: string }).code === 'ENOENT';
+ 
+-      // Only log unexpected errors in non-test environments
+-      // process.env['NODE_ENV'] === 'test' or VITEST are common test indicators
+-      const isTestEnv =
+-        process.env['NODE_ENV'] === 'test' || process.env['VITEST'];
++        // Only log unexpected errors in non-test environments
++        // process.env['NODE_ENV'] === 'test' or VITEST are common test indicators
++        const isTestEnv =
++          process.env['NODE_ENV'] === 'test' || process.env['VITEST'];
+ 
+-      if (!isENOENT && !isTestEnv) {
+-        if (typeof error === 'object' && error !== null && 'code' in error) {
+-          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+-          const fsError = error as { code: string; message: string };
+-          logger.warn(
+-            `Error checking for .git at ${gitPath}: ${fsError.message}`,
+-          );
+-        } else {
+-          logger.warn(
+-            `Non-standard error checking for .git at ${gitPath}: ${String(error)}`,
+-          );
++        if (!isENOENT && !isTestEnv) {
++          if (typeof error === 'object' && error !== null && 'code' in error) {
++            // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
++            const fsError = error as { code: string; message: string };
++            logger.warn(
++              `Error checking for ${marker} at ${markerPath}: ${fsError.message}`,
++            );
++          } else {
++            logger.warn(
++              `Non-standard error checking for ${marker} at ${markerPath}: ${String(error)}`,
++            );
++          }
+         }
+       }
+     }
+@@ -200,6 +213,7 @@ async function getGeminiMdFilePathsInternal(
+   folderTrust: boolean,
+   fileFilteringOptions: FileFilteringOptions,
+   maxDirs: number,
++  boundaryMarkers: readonly string[] = ['.git'],
+ ): Promise<{ global: string[]; project: string[] }> {
+   const dirs = new Set<string>([
+     ...includeDirectoriesToReadGemini,
+@@ -222,6 +236,7 @@ async function getGeminiMdFilePathsInternal(
+         folderTrust,
+         fileFilteringOptions,
+         maxDirs,
++        boundaryMarkers,
+       ),
+     );
+ 
+@@ -253,6 +268,7 @@ async function getGeminiMdFilePathsInternalForEachDir(
+   folderTrust: boolean,
+   fileFilteringOptions: FileFilteringOptions,
+   maxDirs: number,
++  boundaryMarkers: readonly string[] = ['.git'],
+ ): Promise<{ global: string[]; project: string[] }> {
+   const globalPaths = new Set<string>();
+   const projectPaths = new Set<string>();
+@@ -289,7 +305,7 @@ async function getGeminiMdFilePathsInternalForEachDir(
+         resolvedCwd,
+       );
+ 
+-      const projectRoot = await findProjectRoot(resolvedCwd);
++      const projectRoot = await findProjectRoot(resolvedCwd, boundaryMarkers);
+       debugLogger.debug(
+         '[DEBUG] [MemoryDiscovery] Determined project root:',
+         projectRoot ?? 'None',
+@@ -356,6 +372,7 @@ async function getGeminiMdFilePathsInternalForEachDir(
+ export async function readGeminiMdFiles(
+   filePaths: string[],
+   importFormat: 'flat' | 'tree' = 'tree',
++  boundaryMarkers: readonly string[] = ['.git'],
+ ): Promise<GeminiFileContent[]> {
+   // Process files in parallel with concurrency limit to prevent EMFILE errors
+   const CONCURRENT_LIMIT = 20; // Higher limit for file reads as they're typically faster
+@@ -376,6 +393,7 @@ export async function readGeminiMdFiles(
+             undefined,
+             undefined,
+             importFormat,
++            boundaryMarkers,
+           );
+           debugLogger.debug(
+             '[DEBUG] [MemoryDiscovery] Successfully read and processed imports:',
+@@ -481,13 +499,14 @@ export function getExtensionMemoryPaths(
+ 
+ export async function getEnvironmentMemoryPaths(
+   trustedRoots: string[],
++  boundaryMarkers: readonly string[] = ['.git'],
+ ): Promise<string[]> {
+   const allPaths = new Set<string>();
+ 
+   // Trusted Roots Upward Traversal (Parallelized)
+   const traversalPromises = trustedRoots.map(async (root) => {
+     const resolvedRoot = normalizePath(root);
+-    const gitRoot = await findProjectRoot(resolvedRoot);
++    const gitRoot = await findProjectRoot(resolvedRoot, boundaryMarkers);
+     const ceiling = gitRoot ? normalizePath(gitRoot) : resolvedRoot;
+     debugLogger.debug(
+       '[DEBUG] [MemoryDiscovery] Loading environment memory for trusted root:',
+@@ -597,6 +616,7 @@ export async function loadServerHierarchicalMemory(
+   importFormat: 'flat' | 'tree' = 'tree',
+   fileFilteringOptions?: FileFilteringOptions,
+   maxDirs: number = 200,
++  boundaryMarkers: readonly string[] = ['.git'],
+ ): Promise<LoadServerHierarchicalMemoryResponse> {
+   // FIX: Use real, canonical paths for a reliable comparison to handle symlinks.
+   const realCwd = normalizePath(
+@@ -629,6 +649,7 @@ export async function loadServerHierarchicalMemory(
+       folderTrust,
+       fileFilteringOptions || DEFAULT_MEMORY_FILE_FILTERING_OPTIONS,
+       maxDirs,
++      boundaryMarkers,
+     ),
+     Promise.resolve(getExtensionMemoryPaths(extensionLoader)),
+   ]);
+@@ -669,7 +690,11 @@ export async function loadServerHierarchicalMemory(
+   }
+ 
+   // 2. GATHER: Read all files in parallel
+-  const allContents = await readGeminiMdFiles(allFilePaths, importFormat);
++  const allContents = await readGeminiMdFiles(
++    allFilePaths,
++    importFormat,
++    boundaryMarkers,
++  );
+   const contentsMap = new Map(allContents.map((c) => [c.filePath, c]));
+ 
+   // 3. CATEGORIZE: Back into Global, Project, Extension
+@@ -707,6 +732,7 @@ export async function refreshServerHierarchicalMemory(config: Config) {
+     config.getImportFormat(),
+     config.getFileFilteringOptions(),
+     config.getDiscoveryMaxDirs(),
++    config.getMemoryBoundaryMarkers(),
+   );
+   const mcpInstructions =
+     config.getMcpClientManager()?.getMcpInstructions() || '';
+@@ -728,6 +754,7 @@ export async function loadJitSubdirectoryMemory(
+   trustedRoots: string[],
+   alreadyLoadedPaths: Set<string>,
+   alreadyLoadedIdentities?: Set<string>,
++  boundaryMarkers: readonly string[] = ['.git'],
+ ): Promise<MemoryLoadResult> {
+   const resolvedTarget = normalizePath(targetPath);
+   let bestRoot: string | null = null;
+@@ -760,7 +787,7 @@ export async function loadJitSubdirectoryMemory(
+ 
+   // Find the git root to use as the traversal ceiling.
+   // If no git root exists, fall back to the trusted root as the ceiling.
+-  const gitRoot = await findProjectRoot(bestRoot);
++  const gitRoot = await findProjectRoot(bestRoot, boundaryMarkers);
+   const resolvedCeiling = gitRoot ? normalizePath(gitRoot) : bestRoot;
+ 
+   debugLogger.debug(
+@@ -850,7 +877,7 @@ export async function loadJitSubdirectoryMemory(
+     JSON.stringify(newPaths),
+   );
+ 
+-  const contents = await readGeminiMdFiles(newPaths, 'tree');
++  const contents = await readGeminiMdFiles(newPaths, 'tree', boundaryMarkers);
+ 
+   return {
+     files: contents
+diff --git a/packages/core/src/utils/memoryImportProcessor.ts b/packages/core/src/utils/memoryImportProcessor.ts
+index 10bf1ad592b..dc4b0b85376 100644
+--- a/packages/core/src/utils/memoryImportProcessor.ts
++++ b/packages/core/src/utils/memoryImportProcessor.ts
+@@ -48,18 +48,31 @@ export interface ProcessImportsResult {
+   importTree: MemoryFile;
+ }
+ 
+-// Helper to find the project root (looks for .git directory or file for worktrees)
+-async function findProjectRoot(startDir: string): Promise<string> {
++// Helper to find the project root (looks for boundary marker directories/files)
++async function findProjectRoot(
++  startDir: string,
++  boundaryMarkers: readonly string[] = ['.git'],
++): Promise<string> {
++  if (boundaryMarkers.length === 0) {
++    return path.resolve(startDir);
++  }
++
+   let currentDir = path.resolve(startDir);
+   while (true) {
+-    const gitPath = path.join(currentDir, '.git');
+-    try {
+-      // Check for existence only — .git can be a directory (normal repos)
+-      // or a file (submodules / worktrees).
+-      await fs.access(gitPath);
+-      return currentDir;
+-    } catch {
+-      // .git not found, continue to parent
++    for (const marker of boundaryMarkers) {
++      // Sanitize: skip markers with path traversal or absolute paths
++      if (path.isAbsolute(marker) || marker.includes('..')) {
++        continue;
++      }
++      const markerPath = path.join(currentDir, marker);
++      try {
++        // Check for existence only — marker can be a directory (normal repos)
++        // or a file (submodules / worktrees).
++        await fs.access(markerPath);
++        return currentDir;
++      } catch {
++        // marker not found, continue
++      }
+     }
+     const parentDir = path.dirname(currentDir);
+     if (parentDir === currentDir) {
+@@ -68,7 +81,7 @@ async function findProjectRoot(startDir: string): Promise<string> {
+     }
+     currentDir = parentDir;
+   }
+-  // Fallback to startDir if .git not found
++  // Fallback to startDir if no marker found
+   return path.resolve(startDir);
+ }
+ 
+@@ -185,9 +198,10 @@ export async function processImports(
+   },
+   projectRoot?: string,
+   importFormat: 'flat' | 'tree' = 'tree',
++  boundaryMarkers: readonly string[] = ['.git'],
+ ): Promise<ProcessImportsResult> {
+   if (!projectRoot) {
+-    projectRoot = await findProjectRoot(basePath);
++    projectRoot = await findProjectRoot(basePath, boundaryMarkers);
+   }
+ 
+   if (importState.currentDepth >= importState.maxDepth) {
+@@ -346,6 +360,7 @@ export async function processImports(
+         newImportState,
+         projectRoot,
+         importFormat,
++        boundaryMarkers,
+       );
+       result += `<!-- Imported from: ${importPath} -->\n${imported.content}\n<!-- End of import from: ${importPath} -->`;
+       imports.push(imported.importTree);
+diff --git a/schemas/settings.schema.json b/schemas/settings.schema.json
+index f805d243cc3..0a501fad6e9 100644
+--- a/schemas/settings.schema.json
++++ b/schemas/settings.schema.json
+@@ -2272,6 +2272,16 @@
+           "default": 200,
+           "type": "number"
+         },
++        "memoryBoundaryMarkers": {
++          "title": "Memory Boundary Markers",
++          "description": "File or directory names that mark the boundary for GEMINI.md discovery. The upward traversal stops at the first directory containing any of these markers. An empty array disables parent traversal.",
++          "markdownDescription": "File or directory names that mark the boundary for GEMINI.md discovery. The upward traversal stops at the first directory containing any of these markers. An empty array disables parent traversal.\n\n- Category: `Context`\n- Requires restart: `yes`\n- Default: `[\n  \".git\"\n]`",
++          "default": [".git"],
++          "type": "array",
++          "items": {
++            "type": "string"
++          }
++        },
+         "includeDirectories": {
+           "title": "Include Directories",
+           "description": "Additional directories to include in the workspace context. Missing directories will be skipped with a warning.",

@@ -1,0 +1,177 @@
+diff --git a/ext/node/polyfills/child_process.ts b/ext/node/polyfills/child_process.ts
+index 75a427cfbbdd49..0a9a4b1555fde0 100644
+--- a/ext/node/polyfills/child_process.ts
++++ b/ext/node/polyfills/child_process.ts
+@@ -146,37 +146,45 @@ export function fork(
+   // Combine execArgv (Node CLI flags), modulePath (script), and args (script args)
+   const nodeArgs = [...(execArgv || []), modulePath, ...args].map(String);
+ 
+-  // Use the Rust parser to translate Node.js CLI args to Deno args
+-  // The parser handles Deno-style args (e.g., from vitest) by passing them through unchanged
+-  const result = op_node_translate_cli_args(nodeArgs, false, true);
+-  const denoArgs = result.deno_args;
+-  const bootstrapArgs = op_bootstrap_unstable_args();
+-
+-  // Insert bootstrap unstable args after "run" but before other args.
+-  // Filter out any that the translator already added to avoid duplicates
+-  // (e.g. --unstable-bare-node-builtins).
+-  // denoArgs is like ["run", "-A", "--unstable-...", "script.js", ...]
+-  // We need ["run", ...uniqueBootstrapArgs, "-A", "--unstable-...", "script.js", ...]
+-  const denoArgSet = new Set(denoArgs);
+-  const uniqueBootstrapArgs = bootstrapArgs.filter((a) => !denoArgSet.has(a));
+-  if (
+-    denoArgs.length > 0 && denoArgs[0] === "run" &&
+-    uniqueBootstrapArgs.length > 0
+-  ) {
+-    args = [denoArgs[0], ...uniqueBootstrapArgs, ...denoArgs.slice(1)];
++  if (Deno.build.standalone) {
++    // In standalone (compiled) binaries, skip Node-to-Deno arg translation.
++    // The binary already has permissions and unstable config baked in.
++    // Translating would inject "run -A --unstable-..." which the compiled
++    // binary doesn't understand and would pass through as app args.
++    args = nodeArgs;
+   } else {
+-    args = [...uniqueBootstrapArgs, ...denoArgs];
+-  }
+-
+-  // Handle NODE_OPTIONS if the parser returned any
+-  if (result.node_options.length > 0) {
+-    const nodeOptionsStr = result.node_options.join(" ");
+-    if (options.env) {
+-      options.env.NODE_OPTIONS = options.env.NODE_OPTIONS
+-        ? options.env.NODE_OPTIONS + " " + nodeOptionsStr
+-        : nodeOptionsStr;
++    // Use the Rust parser to translate Node.js CLI args to Deno args
++    // The parser handles Deno-style args (e.g., from vitest) by passing them through unchanged
++    const result = op_node_translate_cli_args(nodeArgs, false, true);
++    const denoArgs = result.deno_args;
++    const bootstrapArgs = op_bootstrap_unstable_args();
++
++    // Insert bootstrap unstable args after "run" but before other args.
++    // Filter out any that the translator already added to avoid duplicates
++    // (e.g. --unstable-bare-node-builtins).
++    // denoArgs is like ["run", "-A", "--unstable-...", "script.js", ...]
++    // We need ["run", ...uniqueBootstrapArgs, "-A", "--unstable-...", "script.js", ...]
++    const denoArgSet = new Set(denoArgs);
++    const uniqueBootstrapArgs = bootstrapArgs.filter((a) => !denoArgSet.has(a));
++    if (
++      denoArgs.length > 0 && denoArgs[0] === "run" &&
++      uniqueBootstrapArgs.length > 0
++    ) {
++      args = [denoArgs[0], ...uniqueBootstrapArgs, ...denoArgs.slice(1)];
+     } else {
+-      options.env = { ...process.env, NODE_OPTIONS: nodeOptionsStr };
++      args = [...uniqueBootstrapArgs, ...denoArgs];
++    }
++
++    // Handle NODE_OPTIONS if the parser returned any
++    if (result.node_options.length > 0) {
++      const nodeOptionsStr = result.node_options.join(" ");
++      if (options.env) {
++        options.env.NODE_OPTIONS = options.env.NODE_OPTIONS
++          ? options.env.NODE_OPTIONS + " " + nodeOptionsStr
++          : nodeOptionsStr;
++      } else {
++        options.env = { ...process.env, NODE_OPTIONS: nodeOptionsStr };
++      }
+     }
+   }
+ 
+diff --git a/ext/node/polyfills/internal/child_process.ts b/ext/node/polyfills/internal/child_process.ts
+index b9fb3770bdbd67..02e8eef61e0084 100644
+--- a/ext/node/polyfills/internal/child_process.ts
++++ b/ext/node/polyfills/internal/child_process.ts
+@@ -1470,7 +1470,7 @@ function buildCommand(
+   env: Record<string, string | number | boolean>,
+ ): [string, string[], boolean] {
+   let includeNpmProcessState = false;
+-  if (file === Deno.execPath()) {
++  if (file === Deno.execPath() && !Deno.build.standalone) {
+     // Ensure all args are strings (Node allows numbers in args array)
+     args = args.map((arg) => String(arg));
+ 
+diff --git a/tests/specs/compile/standalone_spawn_self/__test__.jsonc b/tests/specs/compile/standalone_spawn_self/__test__.jsonc
+new file mode 100644
+index 00000000000000..0706592afe5d71
+--- /dev/null
++++ b/tests/specs/compile/standalone_spawn_self/__test__.jsonc
+@@ -0,0 +1,18 @@
++{
++  "tempDir": true,
++  "tests": {
++    "spawn_self": {
++      "steps": [
++        {
++          "args": "compile -A --unstable-node-globals --unstable-bare-node-builtins --unstable-detect-cjs --output main main.ts",
++          "output": "[WILDCARD]"
++        },
++        {
++          "commandName": "./main",
++          "args": [],
++          "output": "main.out"
++        }
++      ]
++    }
++  }
++}
+diff --git a/tests/specs/compile/standalone_spawn_self/main.out b/tests/specs/compile/standalone_spawn_self/main.out
+new file mode 100644
+index 00000000000000..9766475a4185a1
+--- /dev/null
++++ b/tests/specs/compile/standalone_spawn_self/main.out
+@@ -0,0 +1 @@
++ok
+diff --git a/tests/specs/compile/standalone_spawn_self/main.ts b/tests/specs/compile/standalone_spawn_self/main.ts
+new file mode 100644
+index 00000000000000..dbab972ce6865e
+--- /dev/null
++++ b/tests/specs/compile/standalone_spawn_self/main.ts
+@@ -0,0 +1,48 @@
++import { spawn } from "node:child_process";
++import process from "node:process";
++
++if (process.env.SPAWNED_CHILD === "1") {
++  // Child process: verify no Deno flags were injected into argv.
++  // Before the fix, child_process.spawn would translate Node args
++  // into Deno args (run -A --unstable-node-globals etc.) when the
++  // spawn target was a compiled binary.
++  const appArgs = process.argv.slice(2);
++  const denoFlags = appArgs.filter(
++    (a) =>
++      a === "run" ||
++      a === "-A" ||
++      a.startsWith("--unstable-") ||
++      a.startsWith("--v8-flags="),
++  );
++  if (denoFlags.length > 0) {
++    console.log("FAIL: unexpected Deno flags in argv: " + denoFlags.join(", "));
++    process.exit(1);
++  }
++  console.log("ok");
++} else {
++  // Parent process: re-spawn self with the script path
++  // (mimics the pattern used by Node CLIs that relaunch themselves)
++  const script = process.argv[1];
++  const child = spawn(process.execPath, [script], {
++    stdio: ["pipe", "pipe", "pipe"],
++    env: { ...process.env, SPAWNED_CHILD: "1" },
++  });
++
++  let stdout = "";
++  child.stdout!.on("data", (data) => {
++    stdout += data.toString();
++  });
++
++  let stderr = "";
++  child.stderr!.on("data", (data) => {
++    stderr += data.toString();
++  });
++
++  child.on("close", (code) => {
++    if (stderr) {
++      process.stderr.write(stderr);
++    }
++    process.stdout.write(stdout);
++    process.exit(code ?? 1);
++  });
++}

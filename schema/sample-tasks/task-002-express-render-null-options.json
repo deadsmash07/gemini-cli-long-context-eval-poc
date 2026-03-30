@@ -5,7 +5,9 @@
   "source_pr": "https://github.com/expressjs/express/pull/6903",
   "pr_title": "feat: Allow passing null or undefined as the value for options in app.render",
   "commit_sha": "a479419b16f5b97eb20f5dbae5848708ff30ce2d",
-  "language": ["javascript"],
+  "language": [
+    "javascript"
+  ],
   "difficulty": 2,
   "context_files": [
     "lib/application.js",
@@ -20,10 +22,15 @@
     "expected_files_changed": [
       "lib/application.js",
       "test/app.render.js"
-    ]
+    ],
+    "reference_diff": "patches/task-002.patch"
   },
   "metadata": {
-    "tags": ["bug-fix", "regression", "api-compatibility"],
+    "tags": [
+      "bug-fix",
+      "regression",
+      "api-compatibility"
+    ],
     "mined_from": "PR #6903",
     "created_at": "2026-03-29"
   }

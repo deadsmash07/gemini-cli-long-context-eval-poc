@@ -1,0 +1,134 @@
+diff --git a/packages/core/src/tools/grep.test.ts b/packages/core/src/tools/grep.test.ts
+index 1f0a8ee98f3..7bfc59435f3 100644
+--- a/packages/core/src/tools/grep.test.ts
++++ b/packages/core/src/tools/grep.test.ts
+@@ -53,6 +53,13 @@ describe('GrepTool', () => {
+       getFileExclusions: () => ({
+         getGlobExcludes: () => [],
+       }),
++      getFileFilteringOptions: () => ({
++        respectGitIgnore: true,
++        respectGeminiIgnore: true,
++        maxFileCount: 1000,
++        searchTimeout: 30000,
++        customIgnoreFilePaths: [],
++      }),
+       storage: {
+         getProjectTempDir: vi.fn().mockReturnValue('/tmp/project'),
+       },
+@@ -337,6 +344,13 @@ describe('GrepTool', () => {
+         getFileExclusions: () => ({
+           getGlobExcludes: () => [],
+         }),
++        getFileFilteringOptions: () => ({
++          respectGitIgnore: true,
++          respectGeminiIgnore: true,
++          maxFileCount: 1000,
++          searchTimeout: 30000,
++          customIgnoreFilePaths: [],
++        }),
+         storage: {
+           getProjectTempDir: vi.fn().mockReturnValue('/tmp/project'),
+         },
+@@ -414,6 +428,13 @@ describe('GrepTool', () => {
+         getFileExclusions: () => ({
+           getGlobExcludes: () => [],
+         }),
++        getFileFilteringOptions: () => ({
++          respectGitIgnore: true,
++          respectGeminiIgnore: true,
++          maxFileCount: 1000,
++          searchTimeout: 30000,
++          customIgnoreFilePaths: [],
++        }),
+         storage: {
+           getProjectTempDir: vi.fn().mockReturnValue('/tmp/project'),
+         },
+@@ -618,6 +639,13 @@ describe('GrepTool', () => {
+         getFileExclusions: () => ({
+           getGlobExcludes: () => [],
+         }),
++        getFileFilteringOptions: () => ({
++          respectGitIgnore: true,
++          respectGeminiIgnore: true,
++          maxFileCount: 1000,
++          searchTimeout: 30000,
++          customIgnoreFilePaths: [],
++        }),
+       } as unknown as Config;
+ 
+       const multiDirGrepTool = new GrepTool(
+diff --git a/packages/core/src/tools/grep.ts b/packages/core/src/tools/grep.ts
+index ea202c57de0..e913c4b1846 100644
+--- a/packages/core/src/tools/grep.ts
++++ b/packages/core/src/tools/grep.ts
+@@ -215,9 +215,17 @@ class GrepToolInvocation extends BaseToolInvocation<
+ 
+       // Create a timeout controller to prevent indefinitely hanging searches
+       const timeoutController = new AbortController();
++      const configTimeout = this.config.getFileFilteringOptions().searchTimeout;
++      // If configTimeout is less than standard default, it might be too short for grep.
++      // We check if it's greater or if we should use DEFAULT_SEARCH_TIMEOUT_MS as a fallback.
++      // Let's assume the user can set it higher if they want. Using it directly if it exists, otherwise fallback.
++      const timeoutMs =
++        configTimeout && configTimeout > DEFAULT_SEARCH_TIMEOUT_MS
++          ? configTimeout
++          : DEFAULT_SEARCH_TIMEOUT_MS;
+       const timeoutId = setTimeout(() => {
+         timeoutController.abort();
+-      }, DEFAULT_SEARCH_TIMEOUT_MS);
++      }, timeoutMs);
+ 
+       // Link the passed signal to our timeout controller
+       const onAbort = () => timeoutController.abort();
+@@ -252,6 +260,13 @@ class GrepToolInvocation extends BaseToolInvocation<
+ 
+           allMatches = allMatches.concat(matches);
+         }
++      } catch (error) {
++        if (timeoutController.signal.aborted) {
++          throw new Error(
++            `Operation timed out after ${timeoutMs}ms. In large repositories, consider narrowing your search scope by specifying a 'dir_path' or an 'include_pattern'.`,
++          );
++        }
++        throw error;
+       } finally {
+         clearTimeout(timeoutId);
+         signal.removeEventListener('abort', onAbort);
+diff --git a/packages/core/src/tools/ripGrep.ts b/packages/core/src/tools/ripGrep.ts
+index 69f269143b4..415b8c780dc 100644
+--- a/packages/core/src/tools/ripGrep.ts
++++ b/packages/core/src/tools/ripGrep.ts
+@@ -250,9 +250,17 @@ class GrepToolInvocation extends BaseToolInvocation<
+ 
+       // Create a timeout controller to prevent indefinitely hanging searches
+       const timeoutController = new AbortController();
++      const configTimeout = this.config.getFileFilteringOptions().searchTimeout;
++      // If configTimeout is less than standard default, it might be too short for grep.
++      // We check if it's greater or if we should use DEFAULT_SEARCH_TIMEOUT_MS as a fallback.
++      // Let's assume the user can set it higher if they want. Using it directly if it exists, otherwise fallback.
++      const timeoutMs =
++        configTimeout && configTimeout > DEFAULT_SEARCH_TIMEOUT_MS
++          ? configTimeout
++          : DEFAULT_SEARCH_TIMEOUT_MS;
+       const timeoutId = setTimeout(() => {
+         timeoutController.abort();
+-      }, DEFAULT_SEARCH_TIMEOUT_MS);
++      }, timeoutMs);
+ 
+       // Link the passed signal to our timeout controller
+       const onAbort = () => timeoutController.abort();
+@@ -279,6 +287,13 @@ class GrepToolInvocation extends BaseToolInvocation<
+           max_matches_per_file: this.params.max_matches_per_file,
+           signal: timeoutController.signal,
+         });
++      } catch (error) {
++        if (timeoutController.signal.aborted) {
++          throw new Error(
++            `Operation timed out after ${timeoutMs}ms. In large repositories, consider narrowing your search scope by specifying a 'dir_path' or an 'include_pattern'.`,
++          );
++        }
++        throw error;
+       } finally {
+         clearTimeout(timeoutId);
+         signal.removeEventListener('abort', onAbort);

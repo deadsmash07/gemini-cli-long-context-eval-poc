@@ -5,7 +5,10 @@
   "source_pr": "https://github.com/denoland/deno/pull/32980",
   "pr_title": "fix(compile): skip Node-to-Deno arg translation in standalone binaries",
   "commit_sha": "2186d72c3068f0beaab1cad662cf7c1c9ebef2f5",
-  "language": ["typescript", "rust"],
+  "language": [
+    "typescript",
+    "rust"
+  ],
   "difficulty": 3,
   "context_files": [
     "ext/node/polyfills/child_process.ts",
@@ -25,10 +28,16 @@
       "tests/specs/compile/standalone_spawn_self/__test__.jsonc",
       "tests/specs/compile/standalone_spawn_self/main.out",
       "tests/specs/compile/standalone_spawn_self/main.ts"
-    ]
+    ],
+    "reference_diff": "patches/task-006.patch"
   },
   "metadata": {
-    "tags": ["bug-fix", "standalone-binary", "child-process", "argv"],
+    "tags": [
+      "bug-fix",
+      "standalone-binary",
+      "child-process",
+      "argv"
+    ],
     "mined_from": "PR #32980",
     "created_at": "2026-03-29"
   }

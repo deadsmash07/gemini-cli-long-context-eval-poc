@@ -5,7 +5,9 @@
   "source_pr": "https://github.com/pallets/flask/pull/5637",
   "pr_title": "configure and check `request.trusted_hosts`",
   "commit_sha": "10bdf61a0f751f3cb000f8f8ac5ac5b4bb535677",
-  "language": ["python"],
+  "language": [
+    "python"
+  ],
   "difficulty": 2,
   "context_files": [
     "src/flask/app.py",
@@ -23,10 +25,16 @@
       "docs/config.rst",
       "tests/test_request.py",
       "CHANGES.rst"
-    ]
+    ],
+    "reference_diff": "patches/task-004.patch"
   },
   "metadata": {
-    "tags": ["feature", "security", "configuration", "host-validation"],
+    "tags": [
+      "feature",
+      "security",
+      "configuration",
+      "host-validation"
+    ],
     "mined_from": "PR #5637",
     "created_at": "2026-03-29"
   }

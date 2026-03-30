@@ -1,0 +1,32 @@
+{
+  "$schema": "../task-manifest.schema.json",
+  "id": "task-009-gemini-cli-grep-abort-errors",
+  "repo": "https://github.com/google-gemini/gemini-cli",
+  "source_pr": "https://github.com/google-gemini/gemini-cli/pull/23821",
+  "pr_title": "fix(core): resolve ACP Operation Aborted Errors in grep_search",
+  "commit_sha": "9e74a7ec18011223be2d91ef22366cec85bd5223",
+  "language": ["typescript"],
+  "difficulty": 2,
+  "context_files": [
+    "packages/core/src/tools/grep.ts",
+    "packages/core/src/tools/ripGrep.ts",
+    "packages/core/src/tools/grep.test.ts"
+  ],
+  "context_tokens_estimate": 8000,
+  "prompt": "The grep_search tool in Gemini CLI is throwing 'ACP Operation Aborted' errors when running ripgrep searches. The issue appears to be in how the tool handles the ripgrep subprocess - when the operation is cancelled or times out, the error is not being caught gracefully and propagates as an unhandled exception. Fix the grep tool implementation in packages/core/src/tools/grep.ts and the underlying ripgrep wrapper in packages/core/src/tools/ripGrep.ts to properly handle abort signals and operation cancellation. Add tests verifying the fix in grep.test.ts.",
+  "verification": {
+    "type": "test_suite",
+    "test_command": "npx vitest run packages/core/src/tools/grep.test.ts",
+    "expected_files_changed": [
+      "packages/core/src/tools/grep.ts",
+      "packages/core/src/tools/ripGrep.ts",
+      "packages/core/src/tools/grep.test.ts"
+    ],
+    "reference_diff": "patches/task-009.patch"
+  },
+  "metadata": {
+    "tags": ["bug-fix", "error-handling", "grep", "abort-signal", "gemini-cli"],
+    "mined_from": "PR #23821",
+    "created_at": "2026-03-31"
+  }
+}

@@ -1,0 +1,59 @@
+diff --git a/History.md b/History.md
+index 0c5334c17e9..571cd0e47c5 100644
+--- a/History.md
++++ b/History.md
+@@ -4,6 +4,12 @@
+ 
+ * Improve HTML structure in `res.redirect()` responses when HTML format is accepted by adding `<!DOCTYPE html>`, `<title>`, and `<body>` tags for better browser compatibility - by [@Bernice55231](https://github.com/Bernice55231) in [#5167](https://github.com/expressjs/express/pull/5167)
+ 
++* When calling `app.render` with options set to null, the locals object is handled correctly, preventing unexpected errors and making the method behave the same as when options is omitted or an empty object is passed - by [AkaHarshit](https://github.com/AkaHarshit) in [#6903](https://github.com/expressjs/express/pull/6903)
++
++    ```js
++    app.render('index', null, callback); // now works as expected
++    ```
++
+ ## ⚡ Performance
+ 
+ * Avoid duplicate Content-Type header processing in `res.send()` when sending string responses without an explicit Content-Type header - by [@bjohansebas](https://github.com/bjohansebas) in [#6991](https://github.com/expressjs/express/pull/6991)
+diff --git a/lib/application.js b/lib/application.js
+index 838b882aaae..47be2a20c1a 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -523,7 +523,7 @@ app.render = function render(name, options, callback) {
+   var cache = this.cache;
+   var done = callback;
+   var engines = this.engines;
+-  var opts = options;
++  var opts = options || {};
+   var view;
+ 
+   // support callback function as second arg
+diff --git a/test/app.render.js b/test/app.render.js
+index ca15e761d35..bd65ce1035b 100644
+--- a/test/app.render.js
++++ b/test/app.render.js
+@@ -331,6 +331,24 @@ describe('app', function(){
+       })
+     })
+ 
++    it('should accept null or undefined options', function (done) {
++      var app = createApp()
++
++      app.set('views', path.join(__dirname, 'fixtures'))
++      app.locals.user = { name: 'tobi' }
++
++      app.render('user.tmpl', null, function (err, str) {
++        if (err) return done(err);
++        assert.strictEqual(str, '<p>tobi</p>')
++
++        app.render('user.tmpl', undefined, function (err2, str2) {
++          if (err2) return done(err2);
++          assert.strictEqual(str2, '<p>tobi</p>')
++          done()
++        })
++      })
++    })
++
+     describe('caching', function(){
+       it('should cache with cache option', function(done){
+         var app = express();

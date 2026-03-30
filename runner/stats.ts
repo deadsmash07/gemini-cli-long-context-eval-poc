@@ -134,6 +134,13 @@ function main(): void {
     .map(([t, c]) => `${t} (${c})`)
     .join(', ');
 
+  // Context pressure (tokens / 1M window)
+  const pressures = tokenEstimates.map(t => (t / 1_000_000) * 100);
+  const avgPressure = mean(pressures);
+
+  // Gold patches available
+  const patchCount = manifests.filter(m => m.verification.reference_diff).length;
+
   // Print summary
   const lines = [
     '',
@@ -145,23 +152,28 @@ function main(): void {
     `Avg context:     ~${Math.round(avgTokens / 1000)}K tokens (${avgContextFiles.toFixed(1)} files avg)`,
     `Repos:           ${repos.join(', ')}`,
     `Verification:    ${formatCounts(verTypes)}`,
+    `Gold patches:    ${patchCount}/${manifests.length}`,
     '',
     'Metrics (static, from manifests):',
-    `  Mean RFS:        ${meanRFS.toFixed(1)} (cross-component reasoning demand)`,
-    `  RFS range:       ${Math.min(...rfsScores).toFixed(1)} - ${Math.max(...rfsScores).toFixed(1)}`,
-    `  Context files:   ${Math.min(...contextCounts)} - ${Math.max(...contextCounts)} per task`,
+    `  Mean RFS:            ${meanRFS.toFixed(1)} (cross-component reasoning demand)`,
+    `  RFS range:           ${Math.min(...rfsScores).toFixed(1)} - ${Math.max(...rfsScores).toFixed(1)}`,
+    `  Context files:       ${Math.min(...contextCounts)} - ${Math.max(...contextCounts)} per task`,
+    `  Avg context pressure: ${avgPressure.toFixed(2)}% of 1M token window`,
     '',
     'Top tags:          ' + topTags,
     '',
     'Per-task breakdown:',
-    '-'.repeat(80),
-    padRow('Task ID', 'Diff', 'Lang', 'Files', 'Tokens', 'RFS'),
-    '-'.repeat(80),
+    '-'.repeat(90),
+    padRow('Task ID', 'Diff', 'Lang', 'Files', 'Tokens', 'RFS', 'Pressure'),
+    '-'.repeat(90),
   ];
 
   for (let i = 0; i < manifests.length; i++) {
     const m = manifests[i];
     const rfs = rfsScores[i];
+    const pressure = m.context_tokens_estimate
+      ? `${((m.context_tokens_estimate / 1_000_000) * 100).toFixed(1)}%`
+      : '?';
     lines.push(padRow(
       m.id,
       `L${m.difficulty}`,
@@ -169,17 +181,18 @@ function main(): void {
       String(m.context_files.length),
       m.context_tokens_estimate ? `~${Math.round(m.context_tokens_estimate / 1000)}K` : '?',
       rfs.toFixed(1),
+      pressure,
     ));
   }
 
-  lines.push('-'.repeat(80));
+  lines.push('-'.repeat(90));
   lines.push('');
 
   console.log(lines.join('\n'));
 }
 
 function padRow(...cols: string[]): string {
-  const widths = [45, 5, 12, 6, 8, 6];
+  const widths = [45, 5, 12, 6, 8, 6, 8];
   return cols.map((c, i) => c.padEnd(widths[i] || 10)).join('');
 }
 

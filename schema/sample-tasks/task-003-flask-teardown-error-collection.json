@@ -5,7 +5,9 @@
   "source_pr": "https://github.com/pallets/flask/pull/5928",
   "pr_title": "all teardown callbacks are called despite errors",
   "commit_sha": "7b0088693ece1bd3a9238a6fdf56ed8df7a4d43b",
-  "language": ["python"],
+  "language": [
+    "python"
+  ],
   "difficulty": 3,
   "context_files": [
     "src/flask/app.py",
@@ -31,10 +33,16 @@
       "tests/test_appctx.py",
       "tests/test_basic.py",
       "tests/test_helpers.py"
-    ]
+    ],
+    "reference_diff": "patches/task-003.patch"
   },
   "metadata": {
-    "tags": ["bug-fix", "error-handling", "teardown", "exception-group"],
+    "tags": [
+      "bug-fix",
+      "error-handling",
+      "teardown",
+      "exception-group"
+    ],
     "mined_from": "PR #5928",
     "created_at": "2026-03-29"
   }

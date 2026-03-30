@@ -1,0 +1,68 @@
+diff --git a/.changeset/full-hounds-study.md b/.changeset/full-hounds-study.md
+new file mode 100644
+index 000000000000..c759bf307bad
+--- /dev/null
++++ b/.changeset/full-hounds-study.md
+@@ -0,0 +1,5 @@
++---
++'astro': patch
++---
++
++Fixes Zod meta not correctly being rendered on top-level schema when converted into JSON Schema
+diff --git a/packages/astro/src/content/types-generator.ts b/packages/astro/src/content/types-generator.ts
+index 0c6ac353db83..fd31e8750c21 100644
+--- a/packages/astro/src/content/types-generator.ts
++++ b/packages/astro/src/content/types-generator.ts
+@@ -633,9 +633,13 @@ async function generateJSONSchema(
+ 	}
+ 
+ 	if (zodSchemaForJson instanceof z.ZodObject) {
++		const existingMeta = z.globalRegistry.get(zodSchemaForJson);
+ 		zodSchemaForJson = zodSchemaForJson.extend({
+ 			$schema: z.string().optional(),
+ 		});
++		if (existingMeta) {
++			z.globalRegistry.add(zodSchemaForJson, existingMeta);
++		}
+ 	}
+ 
+ 	try {
+diff --git a/packages/astro/test/data-collections-schema.test.js b/packages/astro/test/data-collections-schema.test.js
+index 56f4ee4c8011..f07120b0004f 100644
+--- a/packages/astro/test/data-collections-schema.test.js
++++ b/packages/astro/test/data-collections-schema.test.js
+@@ -47,11 +47,21 @@ describe('Content Collections - data collections', () => {
+ 						},
+ 					},
+ 					required: ['homepage'],
++					title: 'Translations',
++					description: 'Translation strings for the site',
+ 				}),
+ 				JSON.stringify(JSON.parse(rawJson)),
+ 			);
+ 		});
+ 
++		it('Preserves .meta() definitions in the generated JSON schema', async () => {
++			const schema = JSON.parse(
++				await fixture.readFile('../.astro/collections/i18n.schema.json'),
++			);
++			assert.equal(schema.title, 'Translations');
++			assert.equal(schema.description, 'Translation strings for the site');
++		});
++
+ 		it('Generates schema file when the schema uses the image function', async () => {
+ 			const schemaExists = await fixture.pathExists('../.astro/collections/image.schema.json');
+ 			assert.equal(schemaExists, true);
+diff --git a/packages/astro/test/fixtures/data-collections-schema/src/content.config.ts b/packages/astro/test/fixtures/data-collections-schema/src/content.config.ts
+index 67f67382888e..94a863f44d3d 100644
+--- a/packages/astro/test/fixtures/data-collections-schema/src/content.config.ts
++++ b/packages/astro/test/fixtures/data-collections-schema/src/content.config.ts
+@@ -16,7 +16,7 @@ const i18n = defineCollection({
+ 			greeting: z.string(),
+ 			preamble: z.string(),
+ 		})
+-	}),
++	}).meta({ title: 'Translations', description: 'Translation strings for the site' }),
+ });
+ 
+ const func = defineCollection({
